@@ -65,6 +65,7 @@ export default function App() {
   const [showPollComposer,setShowPollComposer]=useState(false);
   const [polls,setPolls]=useState({});
   const [pollVotes,setPollVotes]=useState({});
+  const [pollVoteCounts,setPollVoteCounts]=useState({});
   const [bookmarks,setBookmarks]=useState(new Set());
   const [communities,setCommunities]=useState([]);
   const [communityMembers,setCommunityMembers]=useState({});
@@ -286,9 +287,12 @@ export default function App() {
       setReactionCounts(rc); setCommentCounts(cc); setPolls(pm);
       const pollIds=(pollRows||[]).map(x=>x.id);
       if(pollIds.length){
-        const {data:votes}=await supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds);
-        const vm={}; (votes||[]).forEach(v=>vm[v.poll_id]=v.option_id); setPollVotes(vm);
-      } else setPollVotes({});
+        const [{data:votes},{data:allVotes}]=await Promise.all([
+          supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds),
+          supabase.from('grin_poll_votes').select('poll_id,option_id').in('poll_id',pollIds)
+        ]);
+        const vm={},counts={}; (votes||[]).forEach(v=>vm[v.poll_id]=v.option_id); (allVotes||[]).forEach(v=>{if(!counts[v.poll_id])counts[v.poll_id]={};counts[v.poll_id][v.option_id]=(counts[v.poll_id][v.option_id]||0)+1;}); setPollVotes(vm); setPollVoteCounts(counts);
+      } else { setPollVotes({}); setPollVoteCounts({}); }
     }
   }
 
@@ -348,6 +352,7 @@ export default function App() {
     const {error}=await supabase.from('grin_poll_votes').insert({poll_id:poll.id,option_id:optionId,user_id:session.user.id});
     if(error){setPostNotice(error.message);return;}
     setPollVotes(x=>({...x,[poll.id]:optionId}));
+    setPollVoteCounts(x=>{const next={...x,[poll.id]:{...(x[poll.id]||{})}}; if(existing) next[poll.id][existing]=Math.max(0,(next[poll.id][existing]||1)-1); next[poll.id][optionId]=(next[poll.id][optionId]||0)+1; return next;});
   }
 
   async function reactToPost(postId) {
@@ -496,7 +501,7 @@ export default function App() {
 {posts.map(p=><article className="post-card" key={p.id}>
   <div className="post-author"><div className="chat-avatar">{p.grin_profiles?.avatar_url?<img src={p.grin_profiles.avatar_url} alt=""/>:(p.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{p.grin_profiles?.display_name||'GRIN User'}</strong><span>@{p.grin_profiles?.username||'user'} · {new Date(p.created_at).toLocaleString()}</span></div></div>
   <p className="post-body">{p.body}</p>{p.media_url&&p.media_type==='image'&&<img className="post-media" src={p.media_url} alt=""/>}{p.media_url&&p.media_type==='video'&&<video className="post-media" src={p.media_url} controls/>}
-  {polls[p.id]&&<div className="poll-card"><strong>{polls[p.id].question}</strong>{polls[p.id].grin_poll_options?.map(o=>{const total=(polls[p.id].grin_poll_options||[]).reduce((n,opt)=>n+(pollVotes[polls[p.id].id]===opt.id?1:0),0);return <button type="button" className={pollVotes[polls[p.id].id]===o.id?'poll-choice selected':'poll-choice'} key={o.id} onClick={()=>votePoll(polls[p.id],o.id)}>{o.option_text}</button>})}<small>{pollVotes[polls[p.id].id]?'Vote recorded':'Choose an option'} · {polls[p.id].expires_at&&new Date(polls[p.id].expires_at)>new Date()?'Open':'Closed'}</small></div>}
+  {polls[p.id]&&<div className="poll-card"><strong>{polls[p.id].question}</strong>{polls[p.id].grin_poll_options?.map(o=>{const count=pollVoteCounts[polls[p.id].id]?.[o.id]||0;const total=Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0);const pct=total?Math.round(count*100/total):0;return <button type="button" className={pollVotes[polls[p.id].id]===o.id?'poll-choice selected':'poll-choice'} key={o.id} onClick={()=>votePoll(polls[p.id],o.id)}><span>{o.option_text}</span><b>{pct}%</b></button>})}<small>{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)} vote{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)===1?'':'s'} · {pollVotes[polls[p.id].id]?'Your vote is recorded':'Choose an option'} · {polls[p.id].expires_at&&new Date(polls[p.id].expires_at)>new Date()?'Open':'Closed'}</small></div>}
   <div className="post-footer"><button onClick={()=>reactToPost(p.id)}>♥ Like <span>{reactionCounts[p.id]||0}</span></button><button onClick={()=>toggleComments(p.id)}>💬 Comment <span>{commentCounts[p.id]||0}</span></button><button onClick={()=>toggleBookmark(p.id)}>🔖 {bookmarks.has(p.id)?'Saved':'Save'}</button><button onClick={async()=>{const text=p.body||'GRIN post';if(navigator.share){try{await navigator.share({title:'GRIN post',text})}catch{}}else{await navigator.clipboard?.writeText(text);setPostNotice('Post text copied.')}}}>↗ Share</button></div>
   {openComments===p.id&&<div className="comments"><div className="comment-list">{(comments[p.id]||[]).map(c=><div className="comment" key={c.id}><div className="chat-avatar">{(c.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{c.grin_profiles?.display_name||'GRIN User'}</strong><p>{c.body}</p></div></div>)}</div><div className="comment-compose"><input value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addComment(p.id)} placeholder="Write a comment..."/><button className="send" onClick={()=>addComment(p.id)}><Send size={16}/></button></div></div>}
 </article>)}
