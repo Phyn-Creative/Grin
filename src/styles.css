@@ -34,3 +34,5 @@
 .suggestions-card{margin:18px 0;padding:18px;border-radius:18px}.suggestions-row{display:flex;gap:12px;overflow:auto}.suggestion{min-width:150px;display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border,#ddd);border-radius:16px}.suggestion .chat-avatar{margin-bottom:4px}
 
 .suggestions-section{margin-top:18px}.suggestions-section h3{margin:0 0 10px}.suggestion button{margin-top:4px}
+
+.share-card{max-width:520px}.share-chat-list{display:grid;gap:8px;max-height:55vh;overflow:auto}.share-chat-item{display:flex;align-items:center;gap:10px;text-align:left}.share-chat-item span:last-child{display:flex;flex-direction:column;gap:2px}.share-chat-item small{opacity:.65}.shared-post-card{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:10px;margin-bottom:6px;display:flex;flex-direction:column;gap:3px}.shared-post-card span{opacity:.8}
