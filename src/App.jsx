@@ -57,6 +57,7 @@ export default function App() {
   const [jobNotice,setJobNotice]=useState('');
   const [stories,setStories]=useState([]);
   const [storyCaption,setStoryCaption]=useState('');
+  const [storyFile,setStoryFile]=useState(null);
   const [storyNotice,setStoryNotice]=useState('');
   const [pollQuestion,setPollQuestion]=useState('');
   const [pollOptions,setPollOptions]=useState(['','']);
@@ -100,10 +101,20 @@ export default function App() {
   async function createStory(e){
     e.preventDefault();
     const caption=storyCaption.trim();
-    if(!caption)return;
-    const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url:null,media_type:null,expires_at:new Date(Date.now()+48*60*60*1000).toISOString()});
+    if(!caption&&!storyFile)return;
+    let media_url=null, media_type=null;
+    if(storyFile){
+      if(storyFile.size>50*1024*1024){setStoryNotice('Story file must be 50 MB or less.');return;}
+      media_type=storyFile.type.startsWith('video/')?'video':'image';
+      const safe=storyFile.name.replace(/[^a-zA-Z0-9._-]/g,'-');
+      const path=session.user.id+'/stories/'+crypto.randomUUID()+'-'+safe;
+      const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,storyFile,{contentType:storyFile.type,upsert:false});
+      if(uploadError){setStoryNotice(uploadError.message);return;}
+      media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
+    }
+    const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url,media_type,expires_at:new Date(Date.now()+48*60*60*1000).toISOString()});
     setStoryNotice(error?.message||'Story posted for 24 hours.');
-    if(!error){setStoryCaption('');loadStories();}
+    if(!error){setStoryCaption('');setStoryFile(null);const x=document.getElementById('grin-story-input');if(x)x.value='';loadStories();}
   }
   async function loadBookmarks(){
     const {data}=await supabase.from('grin_bookmarks').select('post_id').eq('user_id',session.user.id);
@@ -381,7 +392,8 @@ export default function App() {
   <h2>Stories</h2>
   <form onSubmit={createStory} className="post-composer">
     <textarea value={storyCaption} onChange={e=>setStoryCaption(e.target.value)} placeholder="Share a story — it disappears after 48 hours." maxLength={500}/>
-    <div className="post-actions"><span>{storyCaption.length}/500</span><button className="primary" type="submit">Add story</button></div>
+    <div className="post-actions"><label className="media-pick">📷 Photo / Video<input id="grin-story-input" type="file" accept="image/*,video/*" onChange={e=>setStoryFile(e.target.files?.[0]||null)}/></label><span>{storyCaption.length}/500</span><button className="primary" type="submit">Add story</button></div>
+    {storyFile&&<div className="file-chip">📎 {storyFile.name}</div>}
     {storyNotice&&<div className="profile-notice">{storyNotice}</div>}
   </form>
   <div className="explore-grid">{stories.length===0?<div className="empty-state">No active stories yet.</div>:stories.map(s=><article className="explore-card" key={s.id}><div className="chat-avatar">{(s.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><strong>{s.grin_profiles?.display_name||'GRIN User'}</strong><span>{new Date(s.created_at).toLocaleString()}</span><p>{s.caption}</p>{s.media_url&&(s.media_type==='video'?<video className="post-media" src={s.media_url} controls/>:<img className="post-media" src={s.media_url} alt="Story"/>)}<a className="secondary-btn" href={s.media_url||'#'} download target="_blank" rel="noreferrer">Download story</a></article>)}</div>
