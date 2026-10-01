@@ -32,3 +32,5 @@
 .feed-tabs{display:flex;gap:8px;margin:0 0 18px;overflow:auto}.feed-tabs button{border:1px solid var(--border,#ddd);background:var(--surface,#fff);border-radius:999px;padding:9px 16px;font-weight:700;cursor:pointer}.feed-tabs button.active{background:#16a34a;color:#fff;border-color:#16a34a}
 
 .suggestions-card{margin:18px 0;padding:18px;border-radius:18px}.suggestions-row{display:flex;gap:12px;overflow:auto}.suggestion{min-width:150px;display:flex;flex-direction:column;gap:5px;padding:14px;border:1px solid var(--border,#ddd);border-radius:16px}.suggestion .chat-avatar{margin-bottom:4px}
+
+.suggestions-section{margin-top:18px}.suggestions-section h3{margin:0 0 10px}.suggestion button{margin-top:4px}
