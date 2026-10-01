@@ -1,4 +1,77 @@
-import { useState } from 'react';
-import { MessageCircle, Users, Compass, Bell, UserRound, Search, Plus, Send, Smile } from 'lucide-react';
-const chats=[{id:1,name:'Welcome to Grin',preview:'This is where your conversations come alive.',online:true,initials:'G'},{id:2,name:'Grin Community',preview:'Build the future of social together.',online:true,initials:'GC'}];
-export default function App(){const [active,setActive]=useState('chats');const [selected,setSelected]=useState(chats[0]);const [message,setMessage]=useState('');const [messages,setMessages]=useState([]);const send=()=>{if(!message.trim())return;setMessages(m=>[...m,{text:message.trim(),mine:true}]);setMessage('')};return <div className="app"><header className="topbar"><div className="brand"><span className="brand-mark">☺</span><span>GRIN</span></div><div className="search"><Search size={18}/><input placeholder="Search people, chats and posts"/></div><button className="avatar">G</button></header><main className="layout"><aside className="sidebar"><nav>{[[MessageCircle,'Chats','chats'],[Users,'Communities','communities'],[Compass,'Discover','discover'],[Bell,'Notifications','notifications'],[UserRound,'Profile','profile']].map(([Icon,label,key])=><button className={active===key?'nav active':'nav'} onClick={()=>setActive(key)} key={key}><Icon size={20}/><span>{label}</span></button>)}</nav><button className="new-chat"><Plus size={19}/> New chat</button><div className="side-foot">GRIN <span>v0.1</span></div></aside><section className="content"><div className="chat-list"><div className="section-head"><div><h1>Chats</h1><p>Conversations that come alive.</p></div><button className="icon-btn"><Plus size={20}/></button></div>{chats.map(c=><button key={c.id} onClick={()=>setSelected(c)} className={selected.id===c.id?'chat-row selected':'chat-row'}><div className="chat-avatar">{c.initials}</div><div className="chat-meta"><strong>{c.name}</strong><span>{c.preview}</span></div>{c.online&&<i className="online"/>}</button>)}</div><div className="conversation"><div className="conversation-head"><div className="chat-avatar">{selected.initials}</div><div><strong>{selected.name}</strong><span>{selected.online?'online':'offline'}</span></div></div><div className="messages"><div className="welcome"><div className="welcome-icon">☺</div><h2>Welcome to Grin</h2><p>Chat, connect and bring your conversations to life.</p></div>{messages.map((m,i)=><div className="bubble mine" key={i}>{m.text}</div>)}</div><div className="composer"><button className="icon-btn"><Smile size={20}/></button><input value={message} onChange={e=>setMessage(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Write a message..."/><button className="send" onClick={send}><Send size={18}/></button></div></div></section></main></div>}
+import { useEffect, useState } from 'react';
+import { MessageCircle, Users, Compass, Bell, UserRound, Search, Plus, Send, Smile, LogOut } from 'lucide-react';
+import { supabase } from './lib/supabase';
+
+const fallbackChats = [{ id: 'welcome', name: 'Welcome to GRIN', preview: 'This is where your conversations come alive.', initials: 'G' }];
+
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [authMode, setAuthMode] = useState('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [active, setActive] = useState('chats');
+  const [chats, setChats] = useState(fallbackChats);
+  const [selected, setSelected] = useState(fallbackChats[0]);
+  const [message, setMessage] = useState('');
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => setSession(next));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    loadChats();
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || selected.id === 'welcome') return;
+    loadMessages(selected.id);
+    const channel = supabase.channel('grin:conversation:' + selected.id, { config: { private: false } })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grin_messages', filter: 'conversation_id=eq.' + selected.id }, payload => {
+        setMessages(current => current.some(m => m.id === payload.new.id) ? current : [...current, payload.new]);
+      }).subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session, selected.id]);
+
+  async function loadChats() {
+    const { data } = await supabase.from('grin_conversation_members').select('conversation_id, grin_conversations(id, title, kind)').eq('user_id', session.user.id);
+    if (!data?.length) return;
+    const rows = data.map(x => ({ id: x.conversation_id, name: x.grin_conversations?.title || 'GRIN Chat', preview: 'Start a conversation.', initials: (x.grin_conversations?.title || 'G').slice(0, 2).toUpperCase() }));
+    setChats(rows);
+    setSelected(rows[0]);
+  }
+
+  async function loadMessages(conversationId) {
+    const { data } = await supabase.from('grin_messages').select('*').eq('conversation_id', conversationId).order('created_at');
+    setMessages(data || []);
+  }
+
+  async function send() {
+    const body = message.trim();
+    if (!body || !session || selected.id === 'welcome') return;
+    const { data, error } = await supabase.from('grin_messages').insert({ conversation_id: selected.id, sender_id: session.user.id, body }).select().single();
+    if (!error && data) setMessages(current => current.some(m => m.id === data.id) ? current : [...current, data]);
+    setMessage('');
+  }
+
+  async function authenticate(e) {
+    e.preventDefault(); setAuthError('');
+    const result = authMode === 'signin'
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ email, password, options: { data: { username: username.trim() || email.split('@')[0] } } });
+    if (result.error) setAuthError(result.error.message);
+    else if (authMode === 'signup' && !result.data.session) setAuthError('Check your email to confirm your GRIN account.');
+  }
+
+  if (loading) return <div className="auth-screen"><div className="auth-card"><div className="brand large"><span className="brand-mark">☺</span><span>GRIN</span></div><p>Loading...</p></div></div>;
+
+  if (!session) return <div className="auth-screen"><form className="auth-card" onSubmit={authenticate}><div className="brand large"><span className="brand-mark">☺</span><span>GRIN</span></div><h1>{authMode === 'signin' ? 'Welcome back' : 'Create your GRIN account'}</h1><p>People, ideas and moments — all in one place.</p>{authMode === 'signup' && <input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username" required minLength={3}/>}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" required/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required minLength={6}/>{authError && <div className="auth-error">{authError}</div>}<button className="primary" type="submit">{authMode === 'signin' ? 'Sign in' : 'Create account'}</button><button className="switch" type="button" onClick={()=>{setAuthMode(authMode==='signin'?'signup':'signin');setAuthError('')}}>{authMode === 'signin' ? 'Create a new account' : 'I already have an account'}</button></form></div>;
+
+  return <div className="app"><header className="topbar"><div className="brand"><span className="brand-mark">☺</span><span>GRIN</span></div><div className="search"><Search size={18}/><input placeholder="Search people, chats and posts"/></div><div className="top-actions"><button className="avatar">{(session.user.email || 'G')[0].toUpperCase()}</button><button className="logout" onClick={()=>supabase.auth.signOut()} title="Sign out"><LogOut size={18}/></button></div></header><main className="layout"><aside className="sidebar"><nav>{[[MessageCircle,'Chats','chats'],[Users,'Communities','communities'],[Compass,'Discover','discover'],[Bell,'Notifications','notifications'],[UserRound,'Profile','profile']].map(([Icon,label,key])=><button className={active===key?'nav active':'nav'} onClick={()=>setActive(key)} key={key}><Icon size={20}/><span>{label}</span></button>)}</nav><button className="new-chat"><Plus size={19}/> New chat</button><div className="side-foot">GRIN <span>v0.2</span></div></aside><section className="content"><div className="chat-list"><div className="section-head"><div><h1>Chats</h1><p>Conversations that come alive.</p></div><button className="icon-btn"><Plus size={20}/></button></div>{chats.map(c=><button key={c.id} onClick={()=>setSelected(c)} className={selected.id===c.id?'chat-row selected':'chat-row'}><div className="chat-avatar">{c.initials}</div><div className="chat-meta"><strong>{c.name}</strong><span>{c.preview}</span></div></button>)}</div><div className="conversation"><div className="conversation-head"><div className="chat-avatar">{selected.initials}</div><div><strong>{selected.name}</strong><span>{selected.id === 'welcome' ? 'GRIN' : 'connected'}</span></div></div><div className="messages">{selected.id === 'welcome' && <div className="welcome"><div className="welcome-icon">☺</div><h2>Welcome to GRIN</h2><p>Your real account is connected. The next layer is finding people and starting conversations.</p></div>}{messages.map(m=><div className={m.sender_id===session.user.id?'bubble mine':'bubble'} key={m.id}>{m.body}</div>)}</div><div className="composer"><button className="icon-btn"><Smile size={20}/></button><input value={message} onChange={e=>setMessage(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder={selected.id === 'welcome' ? 'Create or select a chat...' : 'Write a message...'}/><button className="send" onClick={send}><Send size={18}/></button></div></div></section></main></div>;
+}
