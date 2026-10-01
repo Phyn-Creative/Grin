@@ -312,7 +312,15 @@ export default function App() {
     loadBusinessData();
   }
 
-  async function loadNotifications() { const { data } = await supabase.from('grin_notifications').select('id,actor_id,kind,post_id,body,read_at,created_at,grin_profiles:actor_id(username,display_name,avatar_url)').order('created_at',{ascending:false}).limit(30); setNotifications(data || []); }
+  async function loadNotifications() {
+    const { data, error } = await supabase.from('grin_notifications').select('id,actor_id,kind,post_id,body,read_at,created_at').eq('user_id',session.user.id).order('created_at',{ascending:false}).limit(30);
+    if(error){ console.error('GRIN notifications load failed',error); setNotifications([]); return; }
+    const rows=data||[]; const actorIds=[...new Set(rows.map(n=>n.actor_id).filter(Boolean))];
+    let profiles=[];
+    if(actorIds.length){ const {data:p,error:pe}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',actorIds); if(!pe) profiles=p||[]; }
+    const byId=Object.fromEntries(profiles.map(p=>[p.id,p]));
+    setNotifications(rows.map(n=>({...n,grin_profiles:byId[n.actor_id]||null})));
+  }
   async function markNotificationsRead() { await supabase.from('grin_notifications').update({read_at:new Date().toISOString()}).eq('user_id',session.user.id).is('read_at',null); setNotifications(x=>x.map(n=>({...n,read_at:n.read_at||new Date().toISOString()}))); }
 
   async function loadPosts() {
