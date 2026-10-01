@@ -18,3 +18,5 @@
 .reply-preview,.replying{font-size:11px;padding:6px 8px;border-left:3px solid #19a66a;background:#f0faf5;border-radius:6px;margin-bottom:6px}.replying{position:absolute;bottom:100%;left:0;right:0;margin:0 8px 5px;background:#eef9f3;display:flex;justify-content:space-between}.message-actions button{border:0;background:transparent;font-size:10px;opacity:.7;cursor:pointer;padding:2px 4px}.composer{position:relative}
 
 .nav-badge,.unread-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#19a66a;color:white;font-size:10px;font-weight:700}.unread-badge{margin-left:auto}.chat-search{width:100%;box-sizing:border-box;margin:8px 0;padding:10px 12px;border:1px solid #ddd;border-radius:10px;background:inherit;color:inherit}
+
+.explore-search{display:flex;gap:8px;margin:14px 0}.explore-search input{flex:1;padding:12px;border:1px solid #ddd;border-radius:10px;background:inherit;color:inherit}.explore-results section{margin:20px 0}.explore-results h2{font-size:16px}
