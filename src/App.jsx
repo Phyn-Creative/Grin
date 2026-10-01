@@ -644,7 +644,19 @@ export default function App() {
       <div className="profile-stats"><span><b>{profileFollowers}</b> followers</span><span><b>{profileFollowing}</b> following</span><span><b>{profilePosts.length}</b> recent posts</span></div>
       {profileView.id!==session.user.id&&<button className="primary" onClick={togglePersonFollow}>{profileFollowed?'Following':'Follow'}</button>}
       <button className="secondary-btn" onClick={async()=>{const {data,error}=await supabase.rpc('grin_create_direct_conversation',{other_user:profileView.id});if(!error&&data){setProfileView(null);setActive('chats');}}}>Message</button>
-      <div className="profile-posts"><h3>Recent posts</h3>{profilePosts.length ? profilePosts.map(item=><div className="profile-post" key={item.id}><p>{item.body}</p>{item.media_url&&<img src={item.media_url} alt=""/></div>) : <p>No posts yet.</p>}</div>
+      <div className="profile-posts">
+        <h3>Recent posts</h3>
+        {profilePosts.length > 0 ? (
+          profilePosts.map(item => (
+            <div className="profile-post" key={item.id}>
+              <p>{item.body}</p>
+              {item.media_url ? <img src={item.media_url} alt="" /> : null}
+            </div>
+          ))
+        ) : (
+          <p>No posts yet.</p>
+        )}
+      </div>
     </div>
   </div>
 )}
