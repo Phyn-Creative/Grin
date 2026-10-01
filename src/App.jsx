@@ -101,7 +101,7 @@ export default function App() {
     e.preventDefault();
     const caption=storyCaption.trim();
     if(!caption)return;
-    const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url:null,media_type:null,expires_at:new Date(Date.now()+24*60*60*1000).toISOString()});
+    const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url:null,media_type:null,expires_at:new Date(Date.now()+48*60*60*1000).toISOString()});
     setStoryNotice(error?.message||'Story posted for 24 hours.');
     if(!error){setStoryCaption('');loadStories();}
   }
@@ -380,11 +380,11 @@ export default function App() {
 <div className="profile-card">
   <h2>Stories</h2>
   <form onSubmit={createStory} className="post-composer">
-    <textarea value={storyCaption} onChange={e=>setStoryCaption(e.target.value)} placeholder="Share a story — it disappears after 24 hours." maxLength={500}/>
+    <textarea value={storyCaption} onChange={e=>setStoryCaption(e.target.value)} placeholder="Share a story — it disappears after 48 hours." maxLength={500}/>
     <div className="post-actions"><span>{storyCaption.length}/500</span><button className="primary" type="submit">Add story</button></div>
     {storyNotice&&<div className="profile-notice">{storyNotice}</div>}
   </form>
-  <div className="explore-grid">{stories.length===0?<div className="empty-state">No active stories yet.</div>:stories.map(s=><article className="explore-card" key={s.id}><div className="chat-avatar">{(s.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><strong>{s.grin_profiles?.display_name||'GRIN User'}</strong><span>{new Date(s.created_at).toLocaleString()}</span><p>{s.caption}</p></article>)}</div>
+  <div className="explore-grid">{stories.length===0?<div className="empty-state">No active stories yet.</div>:stories.map(s=><article className="explore-card" key={s.id}><div className="chat-avatar">{(s.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><strong>{s.grin_profiles?.display_name||'GRIN User'}</strong><span>{new Date(s.created_at).toLocaleString()}</span><p>{s.caption}</p>{s.media_url&&(s.media_type==='video'?<video className="post-media" src={s.media_url} controls/>:<img className="post-media" src={s.media_url} alt="Story"/>)}<a className="secondary-btn" href={s.media_url||'#'} download target="_blank" rel="noreferrer">Download story</a></article>)}</div>
 </div>
 <form className="post-composer" onSubmit={createPost}>
   <textarea value={postBody} onChange={e=>setPostBody(e.target.value)} placeholder="What's on your mind?" maxLength={5000}/>
