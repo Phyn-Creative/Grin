@@ -62,6 +62,9 @@ export default function App() {
   const [pollQuestion,setPollQuestion]=useState('');
   const [pollOptions,setPollOptions]=useState(['','']);
   const [pollNotice,setPollNotice]=useState('');
+  const [showPollComposer,setShowPollComposer]=useState(false);
+  const [polls,setPolls]=useState({});
+  const [pollVotes,setPollVotes]=useState({});
   const [bookmarks,setBookmarks]=useState(new Set());
   const [communities,setCommunities]=useState([]);
   const [communityMembers,setCommunityMembers]=useState({});
@@ -274,12 +277,18 @@ export default function App() {
     setPosts(data || []);
     if (data?.length) {
       const ids=data.map(p=>p.id);
-      const [{data:rx},{data:cm}]=await Promise.all([
+      const [{data:rx},{data:cm},{data:pollRows}]=await Promise.all([
         supabase.from('grin_post_reactions').select('post_id').in('post_id',ids),
-        supabase.from('grin_post_comments').select('post_id').in('post_id',ids)
+        supabase.from('grin_post_comments').select('post_id').in('post_id',ids),
+        supabase.from('grin_polls').select('id,post_id,question,expires_at,grin_poll_options(id,option_text,position)').in('post_id',ids)
       ]);
-      const rc={},cc={}; (rx||[]).forEach(x=>rc[x.post_id]=(rc[x.post_id]||0)+1); (cm||[]).forEach(x=>cc[x.post_id]=(cc[x.post_id]||0)+1);
-      setReactionCounts(rc); setCommentCounts(cc);
+      const rc={},cc={},pm={}; (rx||[]).forEach(x=>rc[x.post_id]=(rc[x.post_id]||0)+1); (cm||[]).forEach(x=>cc[x.post_id]=(cc[x.post_id]||0)+1); (pollRows||[]).forEach(x=>pm[x.post_id]=x);
+      setReactionCounts(rc); setCommentCounts(cc); setPolls(pm);
+      const pollIds=(pollRows||[]).map(x=>x.id);
+      if(pollIds.length){
+        const {data:votes}=await supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds);
+        const vm={}; (votes||[]).forEach(v=>vm[v.poll_id]=v.option_id); setPollVotes(vm);
+      } else setPollVotes({});
     }
   }
 
@@ -314,10 +323,31 @@ export default function App() {
     else {
       const {data:full}=await supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,created_at,grin_profiles(username,display_name,avatar_url)').eq('id',data.id).single();
       if(full) setPosts(current=>current.some(p=>p.id===full.id)?current:[full,...current]);
-      setPostBody(''); setPostFile(null);
+      if(showPollComposer){
+        const q=pollQuestion.trim(), opts=pollOptions.map(x=>x.trim()).filter(Boolean);
+        if(!q||opts.length<2){setPostNotice('Post created, but add a poll question and at least two options.');}
+        else{
+          const {data:poll,error:pollError}=await supabase.from('grin_polls').insert({post_id:data.id,question:q,expires_at:new Date(Date.now()+7*24*60*60*1000).toISOString()}).select().single();
+          if(!pollError){
+            const {data:createdOptions,error:optError}=await supabase.from('grin_poll_options').insert(opts.map((option_text,i)=>({poll_id:poll.id,option_text,position:i}))).select();
+            if(optError) setPostNotice(optError.message);
+            else {setPolls(x=>({...x,[data.id]:{...poll,grin_poll_options:createdOptions||[]}}));setPollQuestion('');setPollOptions(['','']);}
+          } else setPostNotice(pollError.message);
+        }
+      }
+      setPostBody(''); setPostFile(null); setShowPollComposer(false);
       const input=document.getElementById('grin-media-input'); if(input) input.value='';
     }
     setPostLoading(false);
+  }
+
+  async function votePoll(poll,optionId){
+    if(!poll||pollVotes[poll.id]===optionId) return;
+    const existing=pollVotes[poll.id];
+    if(existing) await supabase.from('grin_poll_votes').delete().eq('poll_id',poll.id).eq('user_id',session.user.id);
+    const {error}=await supabase.from('grin_poll_votes').insert({poll_id:poll.id,option_id:optionId,user_id:session.user.id});
+    if(error){setPostNotice(error.message);return;}
+    setPollVotes(x=>({...x,[poll.id]:optionId}));
   }
 
   async function reactToPost(postId) {
@@ -460,10 +490,13 @@ export default function App() {
   {postFile&&<div className="file-chip">📎 {postFile.name} <button type="button" onClick={()=>{setPostFile(null);const x=document.getElementById('grin-media-input');if(x)x.value='';}}>×</button></div>}
   <div className="post-actions"><label className="media-pick">📷 Photo / Video<input id="grin-media-input" type="file" accept="image/*,video/*" onChange={e=>setPostFile(e.target.files?.[0]||null)}/></label><span>{postBody.length}/5000</span><button className="primary" type="submit" disabled={(!postBody.trim()&&!postFile)||postLoading}>{postLoading?'Posting...':'Post to GRIN'}</button></div>
   {postNotice&&<div className="profile-notice">{postNotice}</div>}
+  <button type="button" className="secondary-btn" onClick={()=>setShowPollComposer(x=>!x)}>{showPollComposer?'Remove poll':'Add poll'}</button>
+  {showPollComposer&&<div className="poll-composer"><input value={pollQuestion} onChange={e=>setPollQuestion(e.target.value)} placeholder="Ask a question..." maxLength={300}/>{pollOptions.map((o,i)=><div className="poll-option-row" key={i}><input value={o} onChange={e=>setPollOptions(x=>x.map((v,j)=>j===i?e.target.value:v))} placeholder={'Option '+(i+1)} maxLength={100}/>{pollOptions.length>2&&<button type="button" onClick={()=>setPollOptions(x=>x.filter((_,j)=>j!==i))}>×</button>}</div>)}<button type="button" className="secondary-btn" onClick={()=>setPollOptions(x=>[...x,''])}>+ Add option</button></div>}
 </form>
 {posts.map(p=><article className="post-card" key={p.id}>
   <div className="post-author"><div className="chat-avatar">{p.grin_profiles?.avatar_url?<img src={p.grin_profiles.avatar_url} alt=""/>:(p.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{p.grin_profiles?.display_name||'GRIN User'}</strong><span>@{p.grin_profiles?.username||'user'} · {new Date(p.created_at).toLocaleString()}</span></div></div>
   <p className="post-body">{p.body}</p>{p.media_url&&p.media_type==='image'&&<img className="post-media" src={p.media_url} alt=""/>}{p.media_url&&p.media_type==='video'&&<video className="post-media" src={p.media_url} controls/>}
+  {polls[p.id]&&<div className="poll-card"><strong>{polls[p.id].question}</strong>{polls[p.id].grin_poll_options?.map(o=>{const total=(polls[p.id].grin_poll_options||[]).reduce((n,opt)=>n+(pollVotes[polls[p.id].id]===opt.id?1:0),0);return <button type="button" className={pollVotes[polls[p.id].id]===o.id?'poll-choice selected':'poll-choice'} key={o.id} onClick={()=>votePoll(polls[p.id],o.id)}>{o.option_text}</button>})}<small>{pollVotes[polls[p.id].id]?'Vote recorded':'Choose an option'} · {polls[p.id].expires_at&&new Date(polls[p.id].expires_at)>new Date()?'Open':'Closed'}</small></div>}
   <div className="post-footer"><button onClick={()=>reactToPost(p.id)}>♥ Like <span>{reactionCounts[p.id]||0}</span></button><button onClick={()=>toggleComments(p.id)}>💬 Comment <span>{commentCounts[p.id]||0}</span></button><button onClick={()=>toggleBookmark(p.id)}>🔖 {bookmarks.has(p.id)?'Saved':'Save'}</button><button onClick={async()=>{const text=p.body||'GRIN post';if(navigator.share){try{await navigator.share({title:'GRIN post',text})}catch{}}else{await navigator.clipboard?.writeText(text);setPostNotice('Post text copied.')}}}>↗ Share</button></div>
   {openComments===p.id&&<div className="comments"><div className="comment-list">{(comments[p.id]||[]).map(c=><div className="comment" key={c.id}><div className="chat-avatar">{(c.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{c.grin_profiles?.display_name||'GRIN User'}</strong><p>{c.body}</p></div></div>)}</div><div className="comment-compose"><input value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addComment(p.id)} placeholder="Write a comment..."/><button className="send" onClick={()=>addComment(p.id)}><Send size={16}/></button></div></div>}
 </article>)}
