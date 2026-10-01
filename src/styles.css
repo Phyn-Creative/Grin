@@ -22,3 +22,5 @@
 .explore-search{display:flex;gap:8px;margin:14px 0}.explore-search input{flex:1;padding:12px;border:1px solid #ddd;border-radius:10px;background:inherit;color:inherit}.explore-results section{margin:20px 0}.explore-results h2{font-size:16px}
 
 .profile-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}.profile-modal .profile-card{max-width:420px;width:100%;box-sizing:border-box}.profile-avatar-large img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+
+.profile-stats{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0}.profile-stats span{font-size:13px}.profile-posts{margin-top:18px}.profile-post{padding:12px;border-radius:14px;background:var(--surface-2,#f4f4f4);margin-top:8px}.profile-post img{max-width:100%;border-radius:12px;margin-top:8px}
