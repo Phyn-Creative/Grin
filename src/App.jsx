@@ -17,6 +17,9 @@ export default function App() {
   const [selected, setSelected] = useState(fallbackChats[0]);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
+  const [people, setPeople] = useState([]);
+  const [personSearch, setPersonSearch] = useState('');
+  const [peopleLoading, setPeopleLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
@@ -38,6 +41,31 @@ export default function App() {
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session, selected.id]);
+
+  async function searchPeople(value) {
+    setPersonSearch(value);
+    if (!value.trim()) { setPeople([]); return; }
+    setPeopleLoading(true);
+    const clean = value.replace(/[\\%_]/g, '');
+    const { data } = await supabase.from('grin_profiles')
+      .select('id, username, display_name, avatar_url')
+      .neq('id', session.user.id)
+      .or('username.ilike.%' + clean + '%,display_name.ilike.%' + clean + '%')
+      .limit(12);
+    setPeople(data || []);
+    setPeopleLoading(false);
+  }
+
+  async function startChat(person) {
+    const { data, error } = await supabase.rpc('grin_create_direct_conversation', { other_user: person.id });
+    if (error) { setAuthError(error.message); return; }
+    const chat = { id: data, name: person.display_name || person.username, preview: '@' + person.username, initials: (person.display_name || person.username).slice(0, 2).toUpperCase() };
+    setChats(current => current.some(x => x.id === chat.id) ? current : [chat, ...current.filter(x => x.id !== 'welcome')]);
+    setSelected(chat);
+    setActive('chats');
+    setPeople([]);
+    setPersonSearch('');
+  }
 
   async function loadChats() {
     const { data } = await supabase.from('grin_conversation_members').select('conversation_id, grin_conversations(id, title, kind)').eq('user_id', session.user.id);
@@ -73,5 +101,5 @@ export default function App() {
 
   if (!session) return <div className="auth-screen"><form className="auth-card" onSubmit={authenticate}><div className="brand large"><span className="brand-mark">☺</span><span>GRIN</span></div><h1>{authMode === 'signin' ? 'Welcome back' : 'Create your GRIN account'}</h1><p>People, ideas and moments — all in one place.</p>{authMode === 'signup' && <input value={username} onChange={e=>setUsername(e.target.value)} placeholder="Username" required minLength={3}/>}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" required/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" required minLength={6}/>{authError && <div className="auth-error">{authError}</div>}<button className="primary" type="submit">{authMode === 'signin' ? 'Sign in' : 'Create account'}</button><button className="switch" type="button" onClick={()=>{setAuthMode(authMode==='signin'?'signup':'signin');setAuthError('')}}>{authMode === 'signin' ? 'Create a new account' : 'I already have an account'}</button></form></div>;
 
-  return <div className="app"><header className="topbar"><div className="brand"><span className="brand-mark">☺</span><span>GRIN</span></div><div className="search"><Search size={18}/><input placeholder="Search people, chats and posts"/></div><div className="top-actions"><button className="avatar">{(session.user.email || 'G')[0].toUpperCase()}</button><button className="logout" onClick={()=>supabase.auth.signOut()} title="Sign out"><LogOut size={18}/></button></div></header><main className="layout"><aside className="sidebar"><nav>{[[MessageCircle,'Chats','chats'],[Users,'Communities','communities'],[Compass,'Discover','discover'],[Bell,'Notifications','notifications'],[UserRound,'Profile','profile']].map(([Icon,label,key])=><button className={active===key?'nav active':'nav'} onClick={()=>setActive(key)} key={key}><Icon size={20}/><span>{label}</span></button>)}</nav><button className="new-chat"><Plus size={19}/> New chat</button><div className="side-foot">GRIN <span>v0.2</span></div></aside><section className="content"><div className="chat-list"><div className="section-head"><div><h1>Chats</h1><p>Conversations that come alive.</p></div><button className="icon-btn"><Plus size={20}/></button></div>{chats.map(c=><button key={c.id} onClick={()=>setSelected(c)} className={selected.id===c.id?'chat-row selected':'chat-row'}><div className="chat-avatar">{c.initials}</div><div className="chat-meta"><strong>{c.name}</strong><span>{c.preview}</span></div></button>)}</div><div className="conversation"><div className="conversation-head"><div className="chat-avatar">{selected.initials}</div><div><strong>{selected.name}</strong><span>{selected.id === 'welcome' ? 'GRIN' : 'connected'}</span></div></div><div className="messages">{selected.id === 'welcome' && <div className="welcome"><div className="welcome-icon">☺</div><h2>Welcome to GRIN</h2><p>Your real account is connected. The next layer is finding people and starting conversations.</p></div>}{messages.map(m=><div className={m.sender_id===session.user.id?'bubble mine':'bubble'} key={m.id}>{m.body}</div>)}</div><div className="composer"><button className="icon-btn"><Smile size={20}/></button><input value={message} onChange={e=>setMessage(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder={selected.id === 'welcome' ? 'Create or select a chat...' : 'Write a message...'}/><button className="send" onClick={send}><Send size={18}/></button></div></div></section></main></div>;
+  return <div className="app"><header className="topbar"><div className="brand"><span className="brand-mark">☺</span><span>GRIN</span></div><div className="search people-search"><Search size={18}/><input value={personSearch} onChange={e=>searchPeople(e.target.value)} placeholder="Search people, chats and posts"/>{people.length>0 && <div className="people-results">{people.map(p=><button key={p.id} onClick={()=>startChat(p)}><div className="chat-avatar">{(p.display_name||p.username).slice(0,2).toUpperCase()}</div><div><strong>{p.display_name}</strong><span>@{p.username}</span></div></button>)}</div>}</div><div className="top-actions"><button className="avatar">{(session.user.email || 'G')[0].toUpperCase()}</button><button className="logout" onClick={()=>supabase.auth.signOut()} title="Sign out"><LogOut size={18}/></button></div></header><main className="layout"><aside className="sidebar"><nav>{[[MessageCircle,'Chats','chats'],[Users,'Communities','communities'],[Compass,'Discover','discover'],[Bell,'Notifications','notifications'],[UserRound,'Profile','profile']].map(([Icon,label,key])=><button className={active===key?'nav active':'nav'} onClick={()=>setActive(key)} key={key}><Icon size={20}/><span>{label}</span></button>)}</nav><button className="new-chat" onClick={()=>document.querySelector(".people-search input")?.focus()}><Plus size={19}/> New chat</button><div className="side-foot">GRIN <span>v0.2</span></div></aside><section className="content"><div className="chat-list"><div className="section-head"><div><h1>Chats</h1><p>Conversations that come alive.</p></div><button className="icon-btn"><Plus size={20}/></button></div>{chats.map(c=><button key={c.id} onClick={()=>setSelected(c)} className={selected.id===c.id?'chat-row selected':'chat-row'}><div className="chat-avatar">{c.initials}</div><div className="chat-meta"><strong>{c.name}</strong><span>{c.preview}</span></div></button>)}</div><div className="conversation"><div className="conversation-head"><div className="chat-avatar">{selected.initials}</div><div><strong>{selected.name}</strong><span>{selected.id === 'welcome' ? 'GRIN' : 'connected'}</span></div></div><div className="messages">{selected.id === 'welcome' && <div className="welcome"><div className="welcome-icon">☺</div><h2>Welcome to GRIN</h2><p>Your real account is connected. The next layer is finding people and starting conversations.</p></div>}{messages.map(m=><div className={m.sender_id===session.user.id?'bubble mine':'bubble'} key={m.id}>{m.body}</div>)}</div><div className="composer"><button className="icon-btn"><Smile size={20}/></button><input value={message} onChange={e=>setMessage(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder={selected.id === 'welcome' ? 'Create or select a chat...' : 'Write a message...'}/><button className="send" onClick={send}><Send size={18}/></button></div></div></section></main></div>;
 }
