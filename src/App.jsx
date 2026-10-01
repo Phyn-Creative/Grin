@@ -79,6 +79,8 @@ export default function App() {
   const [groupMode,setGroupMode]=useState(false);
   const [groupName,setGroupName]=useState('');
   const [groupSelected,setGroupSelected]=useState([]);
+  const [messageFile,setMessageFile]=useState(null);
+  const [editingMessage,setEditingMessage]=useState(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => { setSession(data.session); setLoading(false); });
@@ -412,7 +414,7 @@ export default function App() {
 
   useEffect(() => {
     if (!session || selected.id === 'welcome') return;
-    loadMessages(selected.id);
+    loadMessages(selected.id); markChatRead(selected.id);
     const channel = supabase.channel('grin:conversation:' + selected.id, { config: { private: false } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grin_messages', filter: 'conversation_id=eq.' + selected.id }, payload => {
         setMessages(current => current.some(m => m.id === payload.new.id) ? current : [...current, payload.new]);
@@ -472,12 +474,33 @@ export default function App() {
     setMessages(data || []);
   }
 
+  async function markChatRead(conversationId){ await supabase.from('grin_conversation_members').update({last_read_at:new Date().toISOString()}).eq('conversation_id',conversationId).eq('user_id',session.user.id); }
   async function send() {
     const body = message.trim();
-    if (!body || !session || selected.id === 'welcome') return;
-    const { data, error } = await supabase.from('grin_messages').insert({ conversation_id: selected.id, sender_id: session.user.id, body }).select().single();
+    if ((!body && !messageFile) || !session || selected.id === 'welcome') return;
+    let media_url=null, media_type=null;
+    if(messageFile){
+      if(messageFile.size>50*1024*1024){setAuthError('Media must be 50 MB or less.');return;}
+      const safe=messageFile.name.replace(/[^a-zA-Z0-9._-]/g,'-');
+      const path=session.user.id+'/messages/'+crypto.randomUUID()+'-'+safe;
+      const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,messageFile,{contentType:messageFile.type,upsert:false});
+      if(uploadError){setAuthError(uploadError.message);return;}
+      media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
+      media_type=messageFile.type.startsWith('video/')?'video':'image';
+    }
+    const { data, error } = await supabase.from('grin_messages').insert({ conversation_id:selected.id,sender_id:session.user.id,body:body||' ',media_url,media_type }).select().single();
     if (!error && data) setMessages(current => current.some(m => m.id === data.id) ? current : [...current, data]);
-    setMessage('');
+    setMessage('');setMessageFile(null);setAuthError(''); markChatRead(selected.id);
+  }
+  async function editMessage(m){
+    const body=prompt('Edit message',m.body);
+    if(body===null||!body.trim()) return;
+    const {data,error}=await supabase.from('grin_messages').update({body:body.trim(),edited_at:new Date().toISOString()}).eq('id',m.id).eq('sender_id',session.user.id).select().single();
+    if(!error&&data)setMessages(x=>x.map(v=>v.id===m.id?data:v));
+  }
+  async function deleteMessage(m){
+    const {data,error}=await supabase.from('grin_messages').update({deleted_at:new Date().toISOString(),body:'This message was deleted.'}).eq('id',m.id).eq('sender_id',session.user.id).select().single();
+    if(!error&&data)setMessages(x=>x.map(v=>v.id===m.id?data:v));
   }
 
   async function authenticate(e) {
