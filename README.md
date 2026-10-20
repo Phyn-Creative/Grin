@@ -9,8 +9,12 @@ v0.1 establishes the mobile-first chat experience and frontend foundation. The n
 ## Stack
 
 - React + Vite
-- Supabase (planned integration)
+- Supabase
 - Cloudflare deployment
+
+## Deployment verification
+
+A fresh deployment should be triggered after updating the Cloudflare build environment variables.
 
 ## Development
 
