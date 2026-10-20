@@ -519,3 +519,10 @@ body {
   }
   .grin-stories-strip { border: 1px solid #dce9d8; }
 }
+
+
+/* People discovery: make the whole suggested identity feel like a profile link. */
+.suggestion-person-link{display:flex;flex-direction:column;gap:5px;align-items:flex-start;text-align:left;background:transparent;border:0;padding:0;color:inherit;cursor:pointer;font:inherit}
+.suggestion-person-link strong{font-weight:750}
+.suggestion-person-link span{font-size:12px;color:var(--muted,#737373)}
+.suggestion-person-link:hover strong{text-decoration:underline}
