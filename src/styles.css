@@ -199,3 +199,10 @@ body, .content { background: var(--grin-canvas); color: var(--grin-ink); }
 .reply-preview, .replying { border-left-color: #187653; background: #edf5ef; }
 .nav-badge, .unread-badge { background: #187653; }
 
+
+
+/* Profile photo upload */
+.avatar-upload-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:8px}
+.avatar-upload-preview{width:72px;height:72px;object-fit:cover;border-radius:50%;border:2px solid var(--border,#dce5df);background:#eef3ef}
+.avatar-upload-row input[type="file"]{max-width:100%;font:inherit;font-size:14px}
+.avatar-upload-row input[type="file"]::file-selector-button{border:1px solid var(--border,#dce5df);border-radius:10px;padding:9px 12px;margin-right:10px;background:#edf4ef;color:#176747;font-weight:600;cursor:pointer}
