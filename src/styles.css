@@ -36,3 +36,49 @@
 .suggestions-section{margin-top:18px}.suggestions-section h3{margin:0 0 10px}.suggestion button{margin-top:4px}
 
 .share-card{max-width:520px}.share-chat-list{display:grid;gap:8px;max-height:55vh;overflow:auto}.share-chat-item{display:flex;align-items:center;gap:10px;text-align:left}.share-chat-item span:last-child{display:flex;flex-direction:column;gap:2px}.share-chat-item small{opacity:.65}.shared-post-card{border:1px solid rgba(0,0,0,.12);border-radius:12px;padding:10px;margin-bottom:6px;display:flex;flex-direction:column;gap:3px}.shared-post-card span{opacity:.8}
+
+
+/* GRIN visual refresh: calmer surfaces, clearer hierarchy, and stronger social-feed layout */
+:root{color-scheme:light;--grin-ink:#14251d;--grin-muted:#708078;--grin-line:#e4ece7;--grin-green:#12a86a;--grin-soft:#edf9f2;--grin-canvas:#f5f8f6}
+body{background:var(--grin-canvas);color:var(--grin-ink)}
+.topbar{height:72px;padding:0 clamp(14px,3vw,38px);gap:clamp(12px,2vw,28px);box-shadow:0 2px 16px rgba(22,55,39,.035)}
+.brand{letter-spacing:-.035em;font-size:23px}
+.brand-mark{background:linear-gradient(145deg,#19c981,#07834e);border-radius:12px;box-shadow:0 5px 12px rgba(18,168,106,.18)}
+.search{border-radius:999px;background:#f5f8f6;border-color:#e8eee9;padding:11px 16px}
+.layout{max-width:1500px;min-height:calc(100vh - 72px)}
+.sidebar{width:248px;padding:26px 17px;background:#fff;border-right:1px solid var(--grin-line)}
+.nav{padding:13px 14px;border-radius:13px;font-size:14px;transition:background .16s ease,color .16s ease}
+.nav.active{background:#e9f8ef;color:#087e4b;box-shadow:inset 3px 0 #12a86a}
+.new-chat{border-radius:999px;padding:13px;background:linear-gradient(120deg,#18bd78,#0b985c);box-shadow:0 6px 14px rgba(18,168,106,.16)}
+.content{background:var(--grin-canvas)}
+.feed-page,.notifications-page,.business-page,.explore-page,.profile-page{padding:clamp(18px,3vw,34px)}
+.feed-head h1,.section-head h1{font-size:clamp(24px,2vw,30px);letter-spacing:-.04em}
+.feed-head p,.section-head p{line-height:1.55}
+.post-composer,.post-card,.profile-card,.explore-card,.business-card,.notification-row{border-color:#e5ece7;border-radius:20px;box-shadow:0 5px 20px rgba(22,55,39,.025)}
+.post-composer{padding:20px}
+.post-composer textarea{min-height:90px}
+.post-card{padding:20px}
+.post-author strong{font-size:14px}
+.post-body{font-size:15px;line-height:1.7;color:#293a31}
+.post-footer{margin-top:14px;gap:10px}
+.post-footer button{border-radius:999px;padding:9px 13px}
+.primary,.send{background:linear-gradient(120deg,#18bd78,#0b985c);border-radius:999px}
+.primary{padding:13px 18px}
+.secondary-btn{border-color:#dfe9e2;border-radius:999px;padding:10px 15px}
+.chat-list{padding:25px 16px}
+.chat-row{padding:13px 11px;border-radius:15px}
+.chat-row.selected{background:#eaf8f0}
+.chat-avatar{background:#e2f5e9;color:#087e4b}
+.conversation{background:#f7faf8}
+.conversation-head{border-bottom-color:#e8eee9}
+.messages{gap:12px}
+.bubble{border-radius:18px;line-height:1.5;box-shadow:0 2px 7px rgba(20,45,31,.035)}
+.bubble.mine{background:#13ad6b}
+.composer{border-radius:999px;padding:8px 10px;box-shadow:0 5px 18px rgba(20,45,31,.05)}
+.auth-screen{background:radial-gradient(ellipse at top left,#e4f8ec 0,transparent 55%),linear-gradient(145deg,#f8fcf9,#eef7f1)}
+.auth-card{border-color:#e6eee8;border-radius:28px;box-shadow:0 24px 70px rgba(16,36,27,.09);padding:clamp(26px,5vw,40px)}
+.auth-card h1{letter-spacing:-.04em;font-size:28px}
+.auth-card input{border-radius:14px;padding:14px 15px}
+.profile-cover{background:linear-gradient(125deg,#e3f8eb,#f8fcf9);border-radius:24px}
+@media(max-width:800px){.sidebar{width:72px;padding:15px 8px}.nav{justify-content:center;padding:13px 8px}.content{grid-template-columns:1fr}.topbar{height:64px}.layout{min-height:calc(100vh - 64px)}.feed-page,.notifications-page,.business-page,.explore-page,.profile-page{padding:16px}.post-card,.post-composer{border-radius:16px}.composer{margin:0 10px 12px}}
+@media(min-width:801px){.feed-page{max-width:820px}.explore-page{max-width:1100px;width:100%;margin:0 auto}}
