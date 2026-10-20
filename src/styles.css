@@ -240,3 +240,98 @@ body, .content { background: var(--grin-canvas); color: var(--grin-ink); }
   .suggestion{min-width:145px}
   .post-media{max-width:100%;height:auto}
 }
+
+
+/* GRIN colour lift: richer social energy without losing the green identity */
+:root {
+  --grin-ink: #17271f;
+  --grin-muted: #68786e;
+  --grin-line: #e1e9df;
+  --grin-green: #087f5b;
+  --grin-soft: #e1f7e9;
+  --grin-canvas: #f3f7f0;
+  --surface: #ffffff;
+  --surface-2: #eaf3e7;
+  --grin-lime: #d6f36a;
+  --grin-coral: #ff806e;
+  --grin-lilac: #e8e2ff;
+}
+body {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(214,243,106,.18), transparent 30rem),
+    radial-gradient(ellipse at 100% 18%, rgba(90,207,161,.12), transparent 32rem),
+    #f3f7f0;
+  color: var(--grin-ink);
+}
+.topbar { background: rgba(255,255,255,.94); }
+.brand-mark {
+  background: linear-gradient(145deg,#0b966a,#075b43);
+  box-shadow: 0 5px 13px rgba(8,127,91,.22);
+}
+.search { background:#edf4eb; border-color:#dce8db; }
+.nav { color:#5f7468; }
+.nav.active,.nav:hover {
+  color:#086746;
+  background:linear-gradient(100deg,#dff7e7,#eef8d9);
+  box-shadow:inset 3px 0 #0b966a;
+}
+.new-chat,.primary,.send {
+  background:linear-gradient(120deg,#0b966a,#08704f);
+  box-shadow:0 5px 13px rgba(8,127,91,.17);
+}
+.new-chat:hover,.primary:hover,.send:hover { background:linear-gradient(120deg,#087f5b,#07563f); }
+.feed-head h1,.section-head h1 { color:#17271f; }
+.feed-head p { color:#63786b; }
+.grin-stories-strip {
+  background:linear-gradient(110deg,#fff 0%,#f4fbef 70%,#f0f8e7 100%);
+  border-color:#dce9d8;
+  box-shadow:0 7px 22px rgba(35,74,47,.045);
+}
+.grin-story-ring { background:linear-gradient(135deg,#0b966a 0%,#d1ed53 55%,#ff806e 100%); }
+.grin-story-ring.add { background:#e4f6d8;border-color:#0b966a; }
+.grin-story-ring.add>span { color:#087f5b; }
+.post-composer,.post-card,.profile-card,.explore-card,.business-card,.notification-row {
+  border-color:#e0e9dd;
+  box-shadow:0 7px 24px rgba(31,66,43,.055);
+}
+.post-composer {
+  background:linear-gradient(135deg,#fff 0%,#fbfff8 100%);
+  border-top:3px solid #0b966a;
+}
+.post-card { background:rgba(255,255,255,.97); }
+.post-author .chat-avatar,.chat-avatar {
+  background:linear-gradient(145deg,#d8f5df,#eaf4c9);
+  color:#086746;
+}
+.post-footer button { color:#4d6b5b; }
+.post-footer button:hover { background:#e5f7e8;color:#087f5b; }
+.profile-cover {
+  background:linear-gradient(120deg,#dff7e7 0%,#f0f8d9 55%,#fce9e1 100%);
+  border-color:#d6e8d4;
+}
+.feed-tabs button.active {
+  background:#087f5b;
+  border-color:#087f5b;
+  box-shadow:0 4px 12px rgba(8,127,91,.2);
+}
+.notification-row.unread { background:#e7f7e9;border-color:#b9e5c8; }
+.nav-badge,.unread-badge { background:#ff806e; color:#fff; }
+.mobile-bottom-nav {
+  background:rgba(255,255,255,.96);
+  border-top-color:#dce8d9;
+  box-shadow:0 -7px 25px rgba(30,65,42,.1);
+}
+.mobile-bottom-nav button.active { color:#087f5b;background:#e2f7e7; }
+.mobile-bottom-nav .mobile-nav-create {
+  background:linear-gradient(145deg,#0b966a,#075b43);
+  box-shadow:0 4px 12px rgba(8,127,91,.2);
+}
+@media(max-width:800px) {
+  body {
+    background:
+      radial-gradient(ellipse at 0% 0%,rgba(214,243,106,.15),transparent 20rem),
+      #f3f7f0;
+  }
+  .feed-tabs { background:rgba(243,247,240,.96); }
+  .post-composer,.post-card { box-shadow:0 5px 17px rgba(31,66,43,.055); }
+}
