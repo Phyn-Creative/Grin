@@ -162,3 +162,40 @@ body{background:var(--grin-canvas);color:var(--grin-ink)}
   .sidebar { width: 220px; min-width: 220px; flex-basis: 220px; }
   .feed-page { width: calc(100% - 40px); }
 }
+
+/* GRIN palette refinement: restrained forest green, warm neutrals, less visual noise */
+:root {
+  color-scheme: light;
+  --grin-ink: #202a25;
+  --grin-muted: #68756d;
+  --grin-line: #e5e8e3;
+  --grin-green: #187653;
+  --grin-soft: #eaf3ed;
+  --grin-canvas: #f7f8f6;
+  --surface: #ffffff;
+  --surface-2: #f1f3f0;
+  --border: #e5e8e3;
+}
+body, .content { background: var(--grin-canvas); color: var(--grin-ink); }
+.topbar, .sidebar { background: #fff; }
+.topbar { box-shadow: 0 1px 0 rgba(25, 43, 33, .07); }
+.brand-mark { background: #187653; box-shadow: none; }
+.search { background: #f5f6f3; border-color: #e5e8e3; }
+.nav.active { background: #eaf3ed; color: #176747; box-shadow: inset 3px 0 #187653; }
+.new-chat, .primary, .send { background: #187653; box-shadow: none; }
+.new-chat:hover, .primary:hover, .send:hover { background: #125d40; }
+.feed-tabs button.active { background: #187653; border-color: #187653; }
+.post-composer, .post-card, .profile-card, .explore-card, .business-card, .notification-row {
+  border-color: #e5e8e3;
+  box-shadow: 0 2px 10px rgba(27, 43, 33, .035);
+}
+.post-body { color: #303b34; }
+.chat-row.selected { background: #eaf3ed; }
+.chat-avatar { background: #e4efe7; color: #176747; }
+.bubble.mine { background: #187653; }
+.profile-cover { background: linear-gradient(125deg, #eaf3ed, #f7f8f6); }
+.auth-screen { background: linear-gradient(145deg, #f8faf8, #edf3ee); }
+.auth-card { box-shadow: 0 16px 48px rgba(26, 43, 32, .07); }
+.reply-preview, .replying { border-left-color: #187653; background: #edf5ef; }
+.nav-badge, .unread-badge { background: #187653; }
+
