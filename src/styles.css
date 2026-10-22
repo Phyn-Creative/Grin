@@ -227,6 +227,7 @@ body, .content { background: var(--grin-canvas); color: var(--grin-ink); }
   .mobile-bottom-nav .mobile-nav-create{color:#fff;background:#187653;margin:0 4px}
   .mobile-bottom-nav .mobile-nav-create span{color:#fff}
   .mobile-create-shortcut{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+  .layout{touch-action:pan-y}
   .content{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
   .feed-page{width:100%;max-width:none;padding:16px 12px 30px}
   .feed-page>.feed-head{align-items:center;gap:8px}
