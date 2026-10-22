@@ -1580,3 +1580,12 @@ button:active { transform: translateY(1px); }
 [data-grin-theme="light"] .mobile-bottom-nav { background: rgba(255,255,255,.97); border-color: #e1e6e1; }
 [data-grin-theme="light"] .mobile-bottom-nav button.active { background: #eaf5ed; color: #176447; }
 [data-grin-theme="light"] .mobile-bottom-nav button.active svg { background: #176447; color: #fff; }
+
+
+/* Search results: compact actionable people cards across Explore and Discover. */
+.explore-person-result{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-top:1px solid #edf1ed;min-width:0}
+.explore-person-result .suggestion-person-link{flex:1;min-width:100px;overflow-wrap:anywhere}
+.explore-person-result .chat-avatar{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#e3f3e8;color:#176447;font-size:12px;font-weight:800;flex-shrink:0}
+.explore-person-result .explore-person-bio{max-width:100%;font-size:12px;line-height:1.4;color:var(--muted,#737373);overflow-wrap:anywhere}
+.explore-person-result .secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;font-size:12px;white-space:nowrap}
+@media(max-width:600px){.explore-person-result{gap:6px}.explore-person-result .suggestion-person-link{flex-basis:100%;flex-direction:row;align-items:center;gap:8px}.explore-person-result .suggestion-person-link .explore-person-bio{display:none}.explore-person-result .secondary-btn{flex:1}}
