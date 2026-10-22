@@ -603,7 +603,7 @@ export default function App() {
       supabase.from('grin_profiles').select('id,username,display_name,avatar_url,bio').neq('id',session.user.id).limit(30),
       supabase.from('grin_creator_profiles').select('user_id,category,headline,bio,location').neq('user_id',session.user.id).limit(10),
       supabase.from('grin_businesses').select('id,name,handle,category,description,logo_url,verified,owner_id').neq('owner_id',session.user.id).limit(10),
-      supabase.from('grin_follows').select('follower_id,following_id').in('following_id',Array.from(nextFollowed))
+      nextFollowed.size ? supabase.from('grin_follows').select('follower_id,following_id').in('following_id',Array.from(nextFollowed)) : Promise.resolve({data:[]})
     ]);
     const myFollowing=new Set(nextFollowed);
     const mutuals={};
