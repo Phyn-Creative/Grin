@@ -714,6 +714,9 @@ export default function App() {
     const channel = supabase.channel('grin:conversation:' + selected.id, { config: { private: false } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grin_messages', filter: 'conversation_id=eq.' + selected.id }, payload => {
         setMessages(current => current.some(m => m.id === payload.new.id) ? current : [...current, payload.new]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'grin_messages', filter: 'conversation_id=eq.' + selected.id }, payload => {
+        setMessages(current => current.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session, selected.id]);
