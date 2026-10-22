@@ -1589,3 +1589,6 @@ button:active { transform: translateY(1px); }
 .explore-person-result .explore-person-bio{max-width:100%;font-size:12px;line-height:1.4;color:var(--muted,#737373);overflow-wrap:anywhere}
 .explore-person-result .secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;font-size:12px;white-space:nowrap}
 @media(max-width:600px){.explore-person-result{gap:6px}.explore-person-result .suggestion-person-link{flex-basis:100%;flex-direction:row;align-items:center;gap:8px}.explore-person-result .suggestion-person-link .explore-person-bio{display:none}.explore-person-result .secondary-btn{flex:1}}
+
+
+.profile-safety-actions{display:flex;flex-wrap:wrap;gap:.6rem;margin:1rem 0}.profile-safety-actions .secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem}
