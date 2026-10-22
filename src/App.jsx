@@ -696,7 +696,7 @@ export default function App() {
       updated_at: new Date().toISOString()
     };
     const phone = profileForm.phone_e164.trim();
-    if (phone && !/^\\+[1-9]\\d{7,14}$/.test(phone)) {
+    if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) {
       setProfileNotice('Use international format for your phone number, e.g. +2348012345678.');
       setProfileSaving(false);
       return;
