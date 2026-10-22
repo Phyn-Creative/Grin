@@ -215,25 +215,37 @@ export default function App() {
     setShowMoreMenu(false);
   }
 
+  // Load only the core data needed for the first screen. Other sections fetch
+  // their data when opened, avoiding a burst of unrelated requests at sign-in.
   useEffect(() => {
     if (!session) return;
     loadChats();
     loadProfile();
     loadPosts();
     loadNotifications();
-    loadCommunities();
-    loadBusinesses();
-    loadBusinessData();
-    loadProfessional();
-    loadCreators();
-    loadListings();
-    loadJobs();
-    loadStories();
     loadBookmarks();
-    loadSavedListings();
-    loadFollowedCreators();
-    loadBlockedUsers();
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    if (active === 'status') loadStories();
+    if (active === 'communities') loadCommunities();
+    if (active === 'business') {
+      loadBusinesses();
+      loadBusinessData();
+      loadProfessional();
+    }
+    if (active === 'creators') {
+      loadCreators();
+      loadFollowedCreators();
+    }
+    if (active === 'marketplace') {
+      loadListings();
+      loadSavedListings();
+    }
+    if (active === 'jobs') loadJobs();
+    if (active === 'settings') loadBlockedUsers();
+  }, [session, active]);
 
   useEffect(() => {
     if (!session?.user?.id || active !== 'explore') return;
