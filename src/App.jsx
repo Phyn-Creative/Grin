@@ -152,6 +152,27 @@ export default function App() {
     document.documentElement.dataset.grinTheme = theme;
   }, [theme]);
 
+  // Open the profile first; fetch counts and posts only after the modal has rendered.
+  useEffect(() => {
+    if (!session?.user?.id || profileView?.type !== 'person' || !profileView.id) return;
+    let cancelled = false;
+    const personId = profileView.id;
+    (async () => {
+      const [{ data: follow }, { count: followers }, { count: following }, { data: personPosts }] = await Promise.all([
+        supabase.from('grin_follows').select('following_id').eq('follower_id', session.user.id).eq('following_id', personId).maybeSingle(),
+        supabase.from('grin_follows').select('*', { count: 'exact', head: true }).eq('following_id', personId),
+        supabase.from('grin_follows').select('*', { count: 'exact', head: true }).eq('follower_id', personId),
+        supabase.from('grin_posts').select('id,body,media_url,media_type,created_at').eq('author_id', personId).order('created_at', { ascending: false }).limit(12)
+      ]);
+      if (cancelled) return;
+      setProfileFollowed(!!follow);
+      setProfileFollowers(followers || 0);
+      setProfileFollowing(following || 0);
+      setProfilePosts(personPosts || []);
+    })();
+    return () => { cancelled = true; };
+  }, [profileView?.id, profileView?.type, session?.user?.id]);
+
   useEffect(() => {
     const onPopState = (event) => {
       const previousPage = event.state?.grinActivePage;
@@ -320,7 +341,7 @@ export default function App() {
     setProfileView(null);
   }
 
-  async function openPersonProfile(person){setProfileView({type:'person',...person});const [{data:follow},{count:followers},{count:following},{data:personPosts}]=await Promise.all([supabase.from('grin_follows').select('following_id').eq('follower_id',session.user.id).eq('following_id',person.id).maybeSingle(),supabase.from('grin_follows').select('*',{count:'exact',head:true}).eq('following_id',person.id),supabase.from('grin_follows').select('*',{count:'exact',head:true}).eq('follower_id',person.id),supabase.from('grin_posts').select('id,body,media_url,media_type,created_at').eq('author_id',person.id).order('created_at',{ascending:false}).limit(12)]);setProfileFollowed(!!follow);setProfileFollowers(followers||0);setProfileFollowing(following||0);setProfilePosts(personPosts||[]);}
+  function openPersonProfile(person){setProfileFollowed(false);setProfileFollowers(0);setProfileFollowing(0);setProfilePosts([]);setProfileView({type:'person',...person});}
   async function togglePersonFollow(person){const target=person||profileView;if(!target||target.type==='creator'||target.id===session.user.id)return;const followed=person?followedIds.has(target.id):profileFollowed;if(followed){await supabase.from('grin_follows').delete().eq('follower_id',session.user.id).eq('following_id',target.id);if(person)setFollowedIds(x=>{const n=new Set(x);n.delete(target.id);return n;});else setProfileFollowed(false);}else{await supabase.from('grin_follows').insert({follower_id:session.user.id,following_id:target.id});if(person)setFollowedIds(x=>new Set([...x,target.id]));else setProfileFollowed(true);}}
 
   async function searchExplore(queryValue = exploreQuery) {
