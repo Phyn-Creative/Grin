@@ -1060,3 +1060,395 @@ button:active { transform: translateY(1px); }
   .own-post-menu { right: 0; }
   .explore-search > svg { display: none; }
 }
+
+
+/* WhatsApp-inspired Status experience — a real viewer, not a scroll link */
+.grin-status-section {
+  margin: 15px 0 20px;
+  padding: 17px 17px 14px;
+  border: 1px solid #e4e8dd;
+  border-radius: 20px;
+  background: #fffefa;
+  box-shadow: 0 4px 16px rgba(23, 54, 37, .045);
+  color: #1e3528;
+}
+.grin-status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.grin-status-heading h2 {
+  margin: 0;
+  color: #1d3829;
+  font-family: "Plus Jakarta Sans", "DM Sans", sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+.grin-status-heading p {
+  margin: 4px 0 0;
+  color: #778278;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.grin-add-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #d5e4d7;
+  border-radius: 999px;
+  background: #eaf4eb;
+  color: #176447;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.grin-add-status:hover { background: #dceedd; border-color: #b8d6bf; }
+.grin-status-section .grin-stories-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: 17px;
+  margin: 0;
+  padding: 1px 1px 7px;
+  overflow-x: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  scrollbar-width: thin;
+  scrollbar-color: #d9e5d8 transparent;
+}
+.grin-status-section .grin-story-add,
+.grin-status-section .grin-story-item {
+  position: relative;
+  flex: 0 0 74px;
+  width: 74px;
+  min-width: 74px;
+  gap: 5px;
+  overflow: visible;
+  text-align: center;
+}
+.grin-status-section .grin-story-ring {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  padding: 3px;
+  background: conic-gradient(from 15deg, #1b8b57, #74c58b, #d7e9d2, #1b8b57);
+  box-shadow: none;
+  border-radius: 50%;
+}
+.grin-status-section .grin-story-ring::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(255,255,255,.95);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.grin-status-section .grin-story-ring > img,
+.grin-status-section .grin-story-ring > span,
+.grin-status-section .grin-status-avatar {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 2px solid #fffefa;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #e9f1e8;
+  color: #1c6544;
+  font-size: 23px;
+  font-weight: 750;
+  object-fit: cover;
+}
+.grin-status-section .grin-status-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.grin-status-section .grin-story-ring.add {
+  padding: 3px;
+  border: 0;
+  background: #e6eee3;
+}
+.grin-status-section .grin-story-ring.add > img,
+.grin-status-section .grin-story-ring.add > span {
+  border-color: #fffefa;
+}
+.grin-status-plus {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border: 2px solid #fffefa;
+  border-radius: 50%;
+  background: #176447;
+  color: white;
+  font-style: normal;
+  box-shadow: 0 2px 5px rgba(0,0,0,.12);
+}
+.grin-status-section .grin-story-add small,
+.grin-status-section .grin-story-item small {
+  display: block;
+  width: 100%;
+  max-width: 74px;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #2d4335;
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grin-status-section .grin-story-add em,
+.grin-status-section .grin-story-item em {
+  display: block;
+  width: 100%;
+  max-width: 74px;
+  overflow: hidden;
+  color: #879187;
+  font-size: 9px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.grin-status-section .grin-story-add:hover .grin-story-ring,
+.grin-status-section .grin-story-item:hover .grin-story-ring {
+  transform: scale(1.035);
+  filter: saturate(1.08);
+}
+.grin-status-composer {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid #e1e9dc;
+  border-radius: 16px;
+  background: #f8faf5;
+}
+.grin-status-composer-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.grin-status-composer-title strong { color: #1e3c2b; font-size: 14px; font-weight: 800; }
+.grin-status-composer-title span { color: #7c887e; font-size: 11px; }
+.grin-status-composer textarea {
+  width: 100%;
+  min-height: 78px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 12px 13px;
+  border: 1px solid #dfe6dc;
+  border-radius: 13px;
+  background: #fffefa;
+  color: #1e3528;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.grin-status-composer textarea:focus { outline: 3px solid rgba(23,100,71,.1); border-color: #88b598; }
+.grin-status-composer-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+.grin-status-composer-actions .media-pick {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid #e0e6db;
+  border-radius: 10px;
+  background: #fffefa;
+  color: #3d654a;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.grin-status-composer-actions .media-pick input { display: none; }
+.grin-status-file { max-width: 180px; overflow: hidden; color: #718078; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.grin-status-spacer { flex: 1; }
+.grin-status-count { color: #8a958b; font-size: 11px; }
+.grin-status-composer-actions .primary { min-height: 36px; padding: 9px 14px; border-radius: 11px; }
+.grin-status-composer-actions .primary:disabled { opacity: .45; cursor: not-allowed; }
+.grin-status-viewer {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(8, 17, 12, .88);
+  backdrop-filter: blur(14px);
+}
+.grin-status-viewer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 440px);
+  height: min(850px, 92dvh);
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 23px;
+  background: #101b14;
+  color: #fff;
+  box-shadow: 0 24px 80px rgba(0,0,0,.4);
+}
+.grin-status-progress {
+  position: absolute;
+  z-index: 4;
+  top: 11px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+}
+.grin-status-progress > span {
+  flex: 1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255,255,255,.38);
+}
+.grin-status-progress > span.complete { background: rgba(255,255,255,.98); }
+.grin-status-progress > span > i { display: block; height: 100%; width: 100%; }
+.grin-status-viewer-head {
+  position: absolute;
+  z-index: 5;
+  top: 23px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px 15px;
+  background: linear-gradient(rgba(0,0,0,.5), transparent);
+}
+.grin-status-viewer-avatar {
+  display: grid;
+  place-items: center;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: 50%;
+  background: #dfece0;
+  color: #176447;
+  font-size: 17px;
+  font-weight: 800;
+}
+.grin-status-viewer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.grin-status-viewer-person { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.grin-status-viewer-person strong { overflow: hidden; font-size: 13px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.grin-status-viewer-person small { color: rgba(255,255,255,.74); font-size: 10px; }
+.grin-status-viewer-head > button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+  color: white;
+  cursor: pointer;
+}
+.grin-status-viewer-media {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  background: #0b100d;
+}
+.grin-status-viewer-media > img,
+.grin-status-viewer-media > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #0b100d;
+}
+.grin-status-text-card {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 32px;
+  box-sizing: border-box;
+  background: radial-gradient(ellipse at top left, #366c4b, transparent 65%), linear-gradient(145deg, #183d2b, #101a14 75%);
+  color: #fffdf5;
+  font-family: "Plus Jakarta Sans", "DM Sans", sans-serif;
+  font-size: clamp(24px, 5vw, 36px);
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.grin-status-caption {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 36px 20px 24px;
+  background: linear-gradient(transparent, rgba(0,0,0,.78));
+  color: white;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+  pointer-events: none;
+}
+.grin-status-tap {
+  position: absolute;
+  z-index: 3;
+  top: 75px;
+  bottom: 55px;
+  display: grid;
+  place-items: center;
+  width: 24%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,.18);
+  cursor: pointer;
+}
+.grin-status-tap:hover { color: rgba(255,255,255,.8); }
+.grin-status-tap-left { left: 0; justify-items: start; padding-left: 8px; }
+.grin-status-tap-right { right: 0; justify-items: end; padding-right: 8px; }
+.grin-status-viewer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 15px;
+  background: #101b14;
+  color: rgba(255,255,255,.7);
+  font-size: 11px;
+}
+.grin-status-viewer-foot span { display: inline-flex; align-items: center; gap: 6px; }
+.grin-status-viewer-foot a { color: #d7efb7; font-weight: 700; text-decoration: none; }
+@media (max-width: 600px) {
+  .grin-status-section { margin: 10px -2px 16px; padding: 14px 12px 11px; border-radius: 16px; }
+  .grin-status-heading h2 { font-size: 16px; }
+  .grin-status-heading p { font-size: 10px; }
+  .grin-status-section .grin-stories-strip { gap: 12px; }
+  .grin-status-section .grin-story-add, .grin-status-section .grin-story-item { flex-basis: 68px; width: 68px; min-width: 68px; }
+  .grin-status-section .grin-story-ring { width: 61px; height: 61px; }
+  .grin-status-section .grin-story-add small, .grin-status-section .grin-story-item small { max-width: 68px; font-size: 10px; }
+  .grin-status-section .grin-story-add em, .grin-status-section .grin-story-item em { max-width: 68px; }
+  .grin-status-composer { padding: 11px; }
+  .grin-status-composer-actions { gap: 7px; }
+  .grin-status-viewer { padding: 0; }
+  .grin-status-viewer-card { width: 100%; height: 100dvh; min-height: 0; border: 0; border-radius: 0; }
+  .grin-status-viewer-foot { padding-bottom: max(13px, env(safe-area-inset-bottom)); }
+}
