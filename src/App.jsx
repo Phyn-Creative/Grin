@@ -152,6 +152,27 @@ export default function App() {
     document.documentElement.dataset.grinTheme = theme;
   }, [theme]);
 
+  // Open the profile first; fetch counts and posts only after the modal has rendered.
+  useEffect(() => {
+    if (!session?.user?.id || profileView?.type !== 'person' || !profileView.id) return;
+    let cancelled = false;
+    const personId = profileView.id;
+    (async () => {
+      const [{ data: follow }, { count: followers }, { count: following }, { data: personPosts }] = await Promise.all([
+        supabase.from('grin_follows').select('following_id').eq('follower_id', session.user.id).eq('following_id', personId).maybeSingle(),
+        supabase.from('grin_follows').select('*', { count: 'exact', head: true }).eq('following_id', personId),
+        supabase.from('grin_follows').select('*', { count: 'exact', head: true }).eq('follower_id', personId),
+        supabase.from('grin_posts').select('id,body,media_url,media_type,created_at').eq('author_id', personId).order('created_at', { ascending: false }).limit(12)
+      ]);
+      if (cancelled) return;
+      setProfileFollowed(!!follow);
+      setProfileFollowers(followers || 0);
+      setProfileFollowing(following || 0);
+      setProfilePosts(personPosts || []);
+    })();
+    return () => { cancelled = true; };
+  }, [profileView?.id, profileView?.type, session?.user?.id]);
+
   useEffect(() => {
     const onPopState = (event) => {
       const previousPage = event.state?.grinActivePage;
