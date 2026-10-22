@@ -7,7 +7,7 @@ create table if not exists public.grin_private_contact_settings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint grin_private_contact_phone_format
-    check (phone_e164 is null or phone_e164 ~ '^\\+[1-9][0-9]{7,14}$')
+    check (phone_e164 is null or phone_e164 ~ '^\+[1-9][0-9]{7,14}$')
 );
 
 alter table public.grin_private_contact_settings enable row level security;
