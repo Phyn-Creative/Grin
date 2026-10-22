@@ -17,6 +17,8 @@ export default function App() {
   const [notificationToast, setNotificationToast] = useState(null);
   const [toastEnabled, setToastEnabled] = useState(() => { try { return localStorage.getItem('grin-toasts') !== 'off'; } catch { return true; } });
   const swipeStart = useRef(null);
+  const navigationHistoryReady = useRef(false);
+  const skipNextHistoryPush = useRef(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [ownPostMenuId, setOwnPostMenuId] = useState(null);
   const [searchNotice, setSearchNotice] = useState('');
@@ -142,12 +144,46 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    const onPopState = (event) => {
+      const previousPage = event.state?.grinActivePage;
+      if (typeof previousPage === 'string') {
+        if (previousPage === active) {
+          // Stay in the app at its root instead of exiting on the first back press.
+          window.history.pushState({ ...event.state, grinActivePage: active }, '', window.location.href);
+          return;
+        }
+        skipNextHistoryPush.current = true;
+        setActive(previousPage);
+        setShowMoreMenu(false);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [active]);
+
+  useEffect(() => {
+    if (skipNextHistoryPush.current) {
+      skipNextHistoryPush.current = false;
+      navigationHistoryReady.current = true;
+      return;
+    }
+    const state = { ...(window.history.state || {}), grinAppNavigation: true, grinActivePage: active };
+    if (!navigationHistoryReady.current) {
+      window.history.replaceState(state, '', window.location.href);
+      window.history.pushState(state, '', window.location.href);
+      navigationHistoryReady.current = true;
+      return;
+    }
+    window.history.pushState(state, '', window.location.href);
+  }, [active]);
+
+  useEffect(() => {
     try { localStorage.setItem('grin-toasts', toastEnabled ? 'on' : 'off'); } catch {}
   }, [toastEnabled]);
 
-  // Swipe only across the three primary content destinations. Secondary pages live in More.
+  // Keep swipe destinations in the same predictable order as the primary app areas.
   const swipePages = ['discover','chats','explore'];
-  const swipeExcluded = 'input,textarea,button,a,select,video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,.message-list,.chat-list';
+  const swipeExcluded = 'input,textarea,button,a,select,video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,[data-no-page-swipe="true"]';
   function handleSwipeStart(event) {
     if (event.touches?.length !== 1) { swipeStart.current = null; return; }
     const target = event.target;
@@ -158,16 +194,17 @@ export default function App() {
     const start = swipeStart.current;
     swipeStart.current = null;
     if (!start || !event.changedTouches?.length) return;
-    const target = event.target;
-    if (!target.closest?.('.content') || target.closest?.(swipeExcluded) || start.target?.closest?.(swipeExcluded)) return;
+    if (start.target?.closest?.(swipeExcluded)) return;
     const dx = event.changedTouches[0].clientX - start.x;
     const dy = event.changedTouches[0].clientY - start.y;
-    // Ignore taps, diagonal gestures and ordinary vertical scrolling.
-    if (Math.abs(dx) < 90 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    // Only a deliberate horizontal gesture changes sections; vertical scrolling stays native.
+    if (Math.abs(dx) < 85 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
     const current = swipePages.indexOf(active);
     if (current < 0) return;
-    const next = Math.max(0, Math.min(swipePages.length - 1, current + (dx < 0 ? 1 : -1)));
-    if (next !== current) { setActive(swipePages[next]); setShowMoreMenu(false); }
+    const next = current + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= swipePages.length) return;
+    setActive(swipePages[next]);
+    setShowMoreMenu(false);
   }
 
   useEffect(() => {
