@@ -213,7 +213,7 @@ export default function App() {
 
   // Keep swipe destinations in the same predictable order as the primary app areas.
   const swipePages = ['discover','chats','status','directory','explore'];
-  const swipeExcluded = 'input,textarea,button,a,select,video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,[data-no-page-swipe="true"]';
+  const swipeExcluded = 'input,textarea,select,video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,[data-no-page-swipe="true"]';
   function handleSwipeStart(event) {
     if (event.touches?.length !== 1) { swipeStart.current = null; return; }
     const target = event.target;
@@ -228,7 +228,7 @@ export default function App() {
     const dx = event.changedTouches[0].clientX - start.x;
     const dy = event.changedTouches[0].clientY - start.y;
     // Only a deliberate horizontal gesture changes sections; vertical scrolling stays native.
-    if (Math.abs(dx) < 85 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
     const current = swipePages.indexOf(active);
     if (current < 0) return;
     const next = current + (dx < 0 ? 1 : -1);
