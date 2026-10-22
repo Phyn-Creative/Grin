@@ -34,6 +34,9 @@ export default function App() {
   const [suggestedBusinesses, setSuggestedBusinesses] = useState([]);
   const [sharePostTarget, setSharePostTarget] = useState(null);
   const [postBody, setPostBody] = useState('');
+  const [editingPostId, setEditingPostId] = useState(null);
+  const [editingPostBody, setEditingPostBody] = useState('');
+  const [postMutationBusy, setPostMutationBusy] = useState(false);
   const [postLoading, setPostLoading] = useState(false);
   const [postNotice, setPostNotice] = useState('');
   const [postFile, setPostFile] = useState(null);
@@ -411,6 +414,27 @@ export default function App() {
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [session]);
+
+  async function savePostEdit(post) {
+    const body=editingPostBody.trim();
+    if(!body){setPostNotice('A post cannot be empty.');return;}
+    if(postMutationBusy)return;
+    setPostMutationBusy(true);setPostNotice('');
+    const {error}=await supabase.from('grin_posts').update({body}).eq('id',post.id).eq('author_id',session.user.id);
+    if(error){setPostNotice('Could not update this post: '+error.message);}
+    else {setPosts(current=>current.map(item=>item.id===post.id?{...item,body}:item));setEditingPostId(null);setEditingPostBody('');setPostNotice('Post updated.');}
+    setPostMutationBusy(false);
+  }
+
+  async function deleteOwnPost(post) {
+    if(postMutationBusy)return;
+    if(!window.confirm('Delete this post? This cannot be undone.'))return;
+    setPostMutationBusy(true);setPostNotice('');
+    const {error}=await supabase.from('grin_posts').delete().eq('id',post.id).eq('author_id',session.user.id);
+    if(error){setPostNotice('Could not delete this post: '+error.message);}
+    else {setPosts(current=>current.filter(item=>item.id!==post.id));setPostNotice('Post deleted.');}
+    setPostMutationBusy(false);
+  }
 
   async function createPost(e) {
     e?.preventDefault();
@@ -854,7 +878,10 @@ export default function App() {
 </form>
 {(feedMode==='following'?posts.filter(p=>followedIds.has(p.author_id)||p.author_id===session.user.id):feedMode==='trending'?[...posts].sort((a,b)=>((reactionCounts[b.id]||0)+(commentCounts[b.id]||0))-((reactionCounts[a.id]||0)+(commentCounts[a.id]||0))):posts).map(p=><article className="post-card" key={p.id}>
   <div className="post-author"><div className="chat-avatar">{p.grin_profiles?.avatar_url?<img src={p.grin_profiles.avatar_url} alt=""/>:(p.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{p.grin_profiles?.display_name||'GRIN User'}</strong><span>@{p.grin_profiles?.username||'user'} · {new Date(p.created_at).toLocaleString()}</span></div></div>
-  {p.repost_of_id&&<div className="repost-label">🔁 Reposted post</div>}<p className="post-body">{p.body}</p>{p.media_url&&p.media_type==='image'&&<img className="post-media" src={p.media_url} alt=""/>}{p.media_url&&p.media_type==='video'&&<video className="post-media" src={p.media_url} controls/>}
+  {p.repost_of_id&&<div className="repost-label">🔁 Reposted post</div>}
+  {p.author_id===session.user.id&&<div className="own-post-tools"><span>Your post</span><button type="button" className="secondary-btn" onClick={()=>{setEditingPostId(editingPostId===p.id?null:p.id);setEditingPostBody(p.body||'');setPostNotice('');}}>{editingPostId===p.id?'Cancel edit':'Edit'}</button><button type="button" className="danger-btn" disabled={postMutationBusy} onClick={()=>deleteOwnPost(p)}>Delete</button></div>}
+  {editingPostId===p.id?<div className="post-edit-box"><textarea aria-label="Edit your post" value={editingPostBody} onChange={e=>setEditingPostBody(e.target.value)} maxLength={5000} rows={4}/><div className="post-edit-actions"><span>{editingPostBody.length}/5000</span><button type="button" className="primary" disabled={postMutationBusy||!editingPostBody.trim()} onClick={()=>savePostEdit(p)}>{postMutationBusy?'Saving…':'Save changes'}</button></div></div>:<p className="post-body">{p.body}</p>}
+  {p.media_url&&p.media_type==='image'&&<img className="post-media" src={p.media_url} alt=""/>}{p.media_url&&p.media_type==='video'&&<video className="post-media" src={p.media_url} controls/>}
   {polls[p.id]&&<div className="poll-card"><strong>{polls[p.id].question}</strong>{polls[p.id].grin_poll_options?.map(o=>{const count=pollVoteCounts[polls[p.id].id]?.[o.id]||0;const total=Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0);const pct=total?Math.round(count*100/total):0;return <button type="button" className={pollVotes[polls[p.id].id]===o.id?'poll-choice selected':'poll-choice'} key={o.id} onClick={()=>votePoll(polls[p.id],o.id)}><span>{o.option_text}</span><b>{pct}%</b></button>})}<small>{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)} vote{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)===1?'':'s'} · {pollVotes[polls[p.id].id]?'Your vote is recorded':'Choose an option'} · {polls[p.id].expires_at&&new Date(polls[p.id].expires_at)>new Date()?'Open':'Closed'}</small></div>}
   <div className="post-footer"><div className="reaction-wrap"><button onClick={()=>setReactionMenu(reactionMenu===p.id?null:p.id)}>{reactionMine[p.id]||'♥'} React <span>{reactionCounts[p.id]||0}</span></button>{reactionMenu===p.id&&<div className="reaction-menu">{['like','❤️','😂','😍','😮','😢','🔥'].map(r=><button key={r} type="button" onClick={()=>reactToPost(p.id,r)}>{r}</button>)}</div>}</div><button onClick={()=>toggleComments(p.id)}>💬 Comment <span>{commentCounts[p.id]||0}</span></button><button onClick={()=>repostPost(p)}>🔁 Repost</button><button onClick={()=>toggleBookmark(p.id)}>🔖 {bookmarks.has(p.id)?'Saved':'Save'}</button><button onClick={()=>{setExternalShareNotice('');sharePostExternally(p);}}>↗ Share link</button><button onClick={()=>setSharePostTarget(p)}>✉ Send in GRIN</button></div>
   {openComments===p.id&&<div className="comments"><div className="comment-list">{(comments[p.id]||[]).map(c=><div className="comment" key={c.id}><div className="chat-avatar">{(c.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</div><div><strong>{c.grin_profiles?.display_name||'GRIN User'}</strong><p>{c.body}</p></div></div>)}</div><div className="comment-compose"><input value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addComment(p.id)} placeholder="Write a comment..."/><button className="send" onClick={()=>addComment(p.id)}><Send size={16}/></button></div></div>}
