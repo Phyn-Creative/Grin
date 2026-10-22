@@ -250,6 +250,7 @@ export default function App() {
     const {error}=await supabase.from('grin_user_blocks').insert({blocker_id:session.user.id,blocked_id:person.id});
     if(error){setSafetyNotice(error.code==='23505'?'This account is already blocked.':'Could not block this account. Please try again.');return;}
     setSafetyNotice(name+' has been blocked.');
+    window.alert(name+' has been blocked. You can manage blocked accounts in Settings.');
     await loadBlockedUsers();
     setExploreResults(current=>({...current,people:current.people.filter(p=>p.id!==person.id)}));
     setProfileView(null);
@@ -277,6 +278,7 @@ export default function App() {
     const {error}=await supabase.from('grin_user_reports').insert({reporter_id:session.user.id,reported_user_id:person.id,reason:reasonKeys[index],details:details.trim()||null});
     if(error){setSafetyNotice('Could not submit your report. Please try again.');return;}
     setSafetyNotice('Report submitted. Thank you for helping keep GRIN safe.');
+    window.alert('Report submitted. Thank you for helping keep GRIN safe.');
     setProfileView(null);
   }
 
