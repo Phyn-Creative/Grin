@@ -1246,8 +1246,8 @@ export default function App() {
   </div>
 )}
 {profileView && createPortal((
-  <div className="profile-modal" role="dialog" aria-modal="true" aria-label="Person profile" style={{position:'fixed',inset:0,zIndex:2147483647,display:'flex',visibility:'visible',opacity:1,alignItems:'center',justifyContent:'center',overflowY:'auto',background:'rgba(0,0,0,.62)',padding:'20px',pointerEvents:'auto'}} onClick={event=>{if(event.target===event.currentTarget)setProfileView(null);}}>
-    <div className="profile-card" style={{position:'relative',zIndex:1,maxHeight:'calc(100dvh - 40px)',overflowY:'auto',overscrollBehavior:'contain',width:'100%',maxWidth:420,margin:'auto'}}>
+  <div className="profile-modal" onClick={event=>{if(event.target===event.currentTarget)setProfileView(null);}}>
+    <div className="profile-card">
       <button className="secondary-btn" onClick={()=>setProfileView(null)}>Close</button>
       <div className="profile-avatar-large">{profileView.avatar_url?<img src={profileView.avatar_url} alt=""/>:(profileView.display_name||'G').slice(0,2).toUpperCase()}</div>
       <h2>{profileView.display_name||'GRIN User'}</h2>
