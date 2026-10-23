@@ -2188,3 +2188,19 @@ button:active { transform: translateY(1px); }
   .content:has(.chat-list) .chat-row { padding: 12px 14px; }
   .content:has(.chat-list) .chat-list .section-head h1 { font-size: 24px; }
 }
+
+
+/* Direct-message read receipts */
+.message-read-receipt {
+  display: block;
+  width: fit-content;
+  margin: 3px 4px 0 auto;
+  color: #397b60;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+:root[data-grin-theme="dark"] .message-read-receipt,
+[data-grin-theme="dark"] .message-read-receipt {
+  color: #9bd7b7;
+}
