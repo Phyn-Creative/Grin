@@ -76,6 +76,7 @@ DROP TRIGGER IF EXISTS grin_story_reply_notification ON public.grin_story_replie
 CREATE TRIGGER grin_story_reply_notification
 AFTER INSERT ON public.grin_story_replies
 FOR EACH ROW EXECUTE FUNCTION public.grin_notify_story_reply();
+REVOKE EXECUTE ON FUNCTION public.grin_notify_story_reply() FROM PUBLIC, anon, authenticated;
 
 -- The existing storage bucket only allowed image/video files, which rejected voice notes.
 UPDATE storage.buckets
