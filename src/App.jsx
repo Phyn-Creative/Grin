@@ -856,11 +856,14 @@ export default function App() {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'grin_messages', filter: 'conversation_id=eq.' + selected.id }, payload => {
         setMessages(current => current.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'grin_conversation_members', filter: 'conversation_id=eq.' + selected.id }, payload => {
-        if (selected.peer_id && payload.new.user_id === selected.peer_id) setPeerReadAt(payload.new.last_read_at || null);
       }).subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const receiptTimer = selected.kind === 'direct' && selected.peer_id
+      ? window.setInterval(() => loadPeerReadReceipt(selected.id), 5000)
+      : null;
+    return () => {
+      if (receiptTimer !== null) window.clearInterval(receiptTimer);
+      supabase.removeChannel(channel);
+    };
   }, [session, selected.id]);
 
   async function searchPeople(value) {
@@ -976,9 +979,9 @@ export default function App() {
   async function markChatRead(conversationId){ await supabase.from('grin_conversation_members').update({last_read_at:new Date().toISOString()}).eq('conversation_id',conversationId).eq('user_id',session.user.id); setUnreadCounts(x=>({...x,[conversationId]:0})); }
   async function loadPeerReadReceipt(conversationId){
     if(!selected.peer_id||selected.kind!=='direct'){setPeerReadAt(null);return;}
-    const {data,error}=await supabase.from('grin_conversation_members').select('last_read_at').eq('conversation_id',conversationId).eq('user_id',selected.peer_id).maybeSingle();
+    const {data,error}=await supabase.rpc('grin_get_peer_read_at',{p_conversation_id:conversationId,p_peer_id:selected.peer_id});
     if(error){console.warn('GRIN read receipt unavailable',error);setPeerReadAt(null);return;}
-    setPeerReadAt(data?.last_read_at||null);
+    setPeerReadAt(data||null);
   }
   async function inviteFriends(){
     setInviteNotice('');
