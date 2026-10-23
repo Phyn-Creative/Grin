@@ -2,6 +2,8 @@
 ALTER TABLE public.grin_stories ALTER COLUMN media_url DROP NOT NULL;
 ALTER TABLE public.grin_stories ALTER COLUMN media_type DROP NOT NULL;
 ALTER TABLE public.grin_notifications ADD COLUMN IF NOT EXISTS story_id uuid REFERENCES public.grin_stories(id) ON DELETE CASCADE;
+ALTER TABLE public.grin_notifications DROP CONSTRAINT IF EXISTS grin_notifications_kind_check;
+ALTER TABLE public.grin_notifications ADD CONSTRAINT grin_notifications_kind_check CHECK (kind = ANY (ARRAY['reaction'::text,'comment'::text,'message'::text,'follow'::text,'status_reply'::text]));
 
 CREATE TABLE IF NOT EXISTS public.grin_story_views (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
