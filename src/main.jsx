@@ -4,19 +4,56 @@ import App from './App';
 import InstallPrompt from './InstallPrompt';
 import './styles.css';
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error('GRIN render failure:', error, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <main style={{ minHeight: '100vh', padding: '32px 20px', background: '#f7f5ef', color: '#183b2b', fontFamily: 'system-ui, sans-serif' }}>
+          <section style={{ maxWidth: 640, margin: '8vh auto', padding: 24, background: '#fff', border: '1px solid #e5d9c5', borderRadius: 18 }}>
+            <h1 style={{ marginTop: 0 }}>GRIN couldn't load this screen</h1>
+            <p>The app hit a rendering error. Refresh once; if it continues, share the error details below.</p>
+            <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', padding: 12, background: '#f7f5ef', borderRadius: 8 }}>{String(this.state.error?.message || this.state.error)}</pre>
+            <button onClick={() => window.location.reload()} style={{ padding: '11px 16px', border: 0, borderRadius: 10, background: '#176447', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Reload GRIN</button>
+          </section>
+        </main>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <>
-      <App />
-      <InstallPrompt />
-    </>
+    <AppErrorBoundary>
+      <>
+        <App />
+        <InstallPrompt />
+      </>
+    </AppErrorBoundary>
   </React.StrictMode>
 );
 
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+// Recovery: remove older service-worker caches that can keep a stale app shell
+// around after a deployment. Keep the app online-first while we investigate.
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // The app remains fully usable online if offline support cannot register.
-    });
+    navigator.serviceWorker.getRegistrations()
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .catch(() => {});
+    if ('caches' in window) {
+      caches.keys()
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('grin-shell-')).map((key) => caches.delete(key))))
+        .catch(() => {});
+    }
   });
 }
