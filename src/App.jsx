@@ -880,7 +880,7 @@ export default function App() {
     const { data, error } = await supabase.rpc('grin_create_direct_conversation', { other_user: person.id });
     if (error) { setAuthError(error.message); return; }
     const chat = { id: data, name: person.display_name || person.username, preview: 'Start a conversation.', initials: (person.display_name || person.username).slice(0, 2).toUpperCase(), avatar_url:person.avatar_url||null, peer_id:person.id, peer_username:person.username, kind:'direct' };
-    setChats(current => current.some(x => x.id === chat.id) ? current : [chat, ...current.filter(x => x.id !== 'welcome')]);
+    setChats(current => [chat, ...current.filter(x => x.id !== chat.id && x.id !== 'welcome')]);
     setSelected(chat);
     setChatOpen(true);
     setActive('chats');
