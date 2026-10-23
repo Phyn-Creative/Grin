@@ -369,7 +369,7 @@ export default function App() {
       const results = await Promise.all([
         supabase.from('grin_profiles').select('id,username,display_name,bio,avatar_url').neq('id',session.user.id).or('username.ilike.'+term+',display_name.ilike.'+term+',bio.ilike.'+term).limit(20),
         supabase.from('grin_businesses').select('id,name,handle,category,description,location').or('name.ilike.'+term+',handle.ilike.'+term+',category.ilike.'+term+',description.ilike.'+term+',location.ilike.'+term).limit(20),
-        supabase.from('grin_creator_profiles').select('id,user_id,category,headline,bio,location,rate,currency,grin_profiles(username,display_name,avatar_url)').or('category.ilike.'+term+',headline.ilike.'+term+',bio.ilike.'+term+',location.ilike.'+term).limit(20),
+        supabase.from('grin_creator_profiles').select('user_id,category,headline,bio,location,rate,currency,grin_profiles(username,display_name,avatar_url)').or('category.ilike.'+term+',headline.ilike.'+term+',bio.ilike.'+term+',location.ilike.'+term).limit(20),
         supabase.from('grin_marketplace_listings').select('id,title,description,category,price,currency,image_url,external_url').or('title.ilike.'+term+',description.ilike.'+term+',category.ilike.'+term).limit(20),
         supabase.from('grin_jobs').select('id,title,description,category,budget,currency').or('title.ilike.'+term+',description.ilike.'+term+',category.ilike.'+term).limit(20),
         supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,created_at,grin_profiles(username,display_name,avatar_url)').ilike('body',term).order('created_at',{ascending:false}).limit(30),
@@ -919,7 +919,7 @@ export default function App() {
     const listingIds=[...new Set(rows.map(m=>m.shared_listing_id).filter(Boolean))];
     const [{data:senderRows},{data:creatorRows},{data:businessRows},{data:listingRows}]=await Promise.all([
       senderIds.length?supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',senderIds):Promise.resolve({data:[]} ),
-      creatorIds.length?supabase.from('grin_creator_profiles').select('id,user_id,category,headline,bio,location,rate,currency,grin_profiles(username,display_name,avatar_url)').in('user_id',creatorIds):Promise.resolve({data:[]} ),
+      creatorIds.length?supabase.from('grin_creator_profiles').select('user_id,category,headline,bio,location,rate,currency,grin_profiles(username,display_name,avatar_url)').in('user_id',creatorIds):Promise.resolve({data:[]} ),
       businessIds.length?supabase.from('grin_businesses').select('id,name,handle,category,description,location,logo_url,cover_url,verified,owner_id').in('id',businessIds):Promise.resolve({data:[]} ),
       listingIds.length?supabase.from('grin_marketplace_listings').select('id,title,description,category,price,currency,external_url,seller_id').in('id',listingIds):Promise.resolve({data:[]} )
     ]);
