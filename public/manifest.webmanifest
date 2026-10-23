@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "GRIN — Connect your world",
+  "short_name": "GRIN",
+  "description": "Connect, share, chat, and discover your people.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f7faf8",
+  "theme_color": "#19c37d",
+  "categories": ["social", "communication"],
+  "icons": [
+    { "src": "/icons/grin.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
