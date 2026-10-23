@@ -1918,6 +1918,14 @@ button:active { transform: translateY(1px); }
 }
 .chat-row:hover { background: #f7f9f5; transform: none; }
 .chat-row.selected { background: #edf5ed; box-shadow: inset 3px 0 #176447; }
+.chat-row-wrap { display:flex; align-items:center; gap:2px; position:relative; }
+.chat-row-wrap .chat-row { flex:1; min-width:0; }
+.chat-pin-btn { flex:0 0 30px; width:30px; height:30px; border:0; border-radius:9px; background:transparent; color:#9aa69d; display:grid; place-items:center; cursor:pointer; opacity:.55; }
+.chat-row-wrap:hover .chat-pin-btn,.chat-pin-btn:focus-visible,.chat-pin-btn.is-pinned { opacity:1; }
+.chat-pin-btn.is-pinned { color:#176447; background:#e5f0e5; }
+.chat-pinned-indicator { display:inline-block; vertical-align:middle; margin-right:5px; color:#176447; }
+[data-grin-theme="dark"] .chat-pin-btn.is-pinned { color:#b7e2c4; background:#2c4434; }
+[data-grin-theme="light"] .chat-pin-btn.is-pinned { color:#176447; background:#e5f0e5; }
 .chat-row .chat-avatar,
 .conversation-head .chat-avatar {
   flex: 0 0 48px;
