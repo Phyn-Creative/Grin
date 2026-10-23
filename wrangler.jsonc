@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "grin-3ea",
+  "name": "grin",
   "compatibility_date": "2026-10-20",
   "assets": {
     "directory": "./dist",
