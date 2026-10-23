@@ -1151,7 +1151,7 @@ export default function App() {
         media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
         media_type=attachment.type.startsWith('audio/')?'audio':(attachment.type.startsWith('video/')?'video':'image');
       }
-      const { data, error } = await supabase.from('grin_messages').insert({ conversation_id:conversationId,sender_id:session.user.id,body:body||' ',media_url,media_type,reply_to_id:replyId}).select().single();
+      const { data, error } = await supabase.from('grin_messages').insert({ conversation_id:conversationId,sender_id:session.user.id,body:body||(media_type==='audio'?'Voice note':media_type==='video'?'Video':'Photo'),media_url,media_type,reply_to_id:replyId}).select().single();
       if(error||!data){
         console.error('GRIN message send failed',error);
         setAuthError('Message could not be sent. Your draft is still here. Check your connection and try again.');
@@ -1266,7 +1266,7 @@ export default function App() {
           profilePosts.map(item => (
             <div className="profile-post" key={item.id}>
               <p>{item.body}</p>
-              {item.media_url ? <img src={item.media_url} alt="" /> : null}
+              {item.media_url ? (item.media_type==='video' ? <video src={item.media_url} controls /> : <img src={item.media_url} alt="Post attachment" />) : null}
             </div>
           ))
         ) : (
