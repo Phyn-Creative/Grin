@@ -1775,6 +1775,82 @@ button:active { transform: translateY(1px); }
 }
 
 
+
+/* Scroll containment fix: each chat pane owns its own scroll area. */
+@media (min-width: 801px) {
+  html, body, #root, .app { min-height: 100%; }
+  .content:has(.chat-list) {
+    height: calc(100dvh - 68px);
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+  }
+  .content:has(.chat-list) .chat-list {
+    height: 100%;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .content:has(.chat-list) .conversation {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
+  }
+  .content:has(.chat-list) .messages {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+  .content:has(.chat-list) .composer { flex: 0 0 auto; }
+}
+@media (max-width: 800px) {
+  .content:has(.chat-list) {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  .content:has(.chat-list) .chat-list {
+    height: auto;
+    min-height: calc(100dvh - 140px);
+    overflow: visible;
+  }
+  .content:has(.chat-list) .conversation.chat-open {
+    display: flex;
+    position: fixed;
+    z-index: 900;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    overflow: hidden;
+  }
+  .content:has(.chat-list) .conversation.chat-open .conversation-head {
+    flex: 0 0 auto;
+  }
+  .content:has(.chat-list) .conversation.chat-open .messages {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .content:has(.chat-list) .conversation.chat-open .composer {
+    flex: 0 0 auto;
+    position: relative;
+    bottom: auto;
+  }
+}
+
 /* GRIN chat — familiar, WhatsApp-inspired layout with minimal visual noise */
 .content:has(.chat-list) {
   background: #f7f7f2;
