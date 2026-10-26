@@ -149,6 +149,13 @@ export default function App() {
   const [connectFourBoard, setConnectFourBoard] = useState(Array(42).fill(''));
   const [connectFourNotice, setConnectFourNotice] = useState('Your turn — choose a column.');
   const [connectFourOver, setConnectFourOver] = useState(false);
+  const [onlinePenaltyRoom, setOnlinePenaltyRoom] = useState('');
+  const [onlinePenaltyRole, setOnlinePenaltyRole] = useState('');
+  const [onlinePenaltyJoinCode, setOnlinePenaltyJoinCode] = useState('');
+  const [onlinePenalty, setOnlinePenalty] = useState({turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'Create a room or join a friend to play head-to-head.'});
+  const onlinePenaltyRef = useRef(onlinePenalty);
+  const onlinePenaltyChannelRef = useRef(null);
+  onlinePenaltyRef.current = onlinePenalty;
   const [penaltyRound, setPenaltyRound] = useState(1);
   const [penaltyPlayerGoals, setPenaltyPlayerGoals] = useState(0);
   const [penaltyBotGoals, setPenaltyBotGoals] = useState(0);
@@ -384,6 +391,86 @@ export default function App() {
     else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
     else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
   }
+
+  function createOnlinePenaltyRoom() {
+    const code = crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+    setOnlinePenaltyRoom(code); setOnlinePenaltyRole('host'); setOnlinePenaltyJoinCode('');
+    setOnlinePenalty({turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'Room created. You shoot first — share the invitation link.'});
+    setSelectedGrinGame('football'); setActive('games');
+    const params=new URLSearchParams(window.location.search); params.set('game','penalty'); params.set('room',code);
+    window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+  function joinOnlinePenaltyRoom(codeInput=onlinePenaltyJoinCode) {
+    const code=String(codeInput||'').trim().toUpperCase();
+    if(!/^[A-Z0-9]{6,12}$/.test(code)){setOnlinePenalty(s=>({...s,notice:'Enter a valid 6–12 character room code.'}));return;}
+    setOnlinePenaltyRoom(code); setOnlinePenaltyRole('guest');
+    setOnlinePenalty({turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'Joining room… waiting for the host game state.'});
+    setSelectedGrinGame('football'); setActive('games');
+    const params=new URLSearchParams(window.location.search); params.set('game','penalty'); params.set('room',code);
+    window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+  function leaveOnlinePenaltyRoom() {
+    if(onlinePenaltyChannelRef.current){supabase.removeChannel(onlinePenaltyChannelRef.current);onlinePenaltyChannelRef.current=null;}
+    setOnlinePenaltyRoom('');setOnlinePenaltyRole('');setOnlinePenaltyJoinCode('');
+    setOnlinePenalty({turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'Create a room or join a friend to play head-to-head.'});
+    const params=new URLSearchParams(window.location.search);params.delete('game');params.delete('room');const query=params.toString();
+    window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
+  }
+  function applyOnlinePenaltyAction(player, action, direction) {
+    const current=onlinePenaltyRef.current;
+    if(!onlinePenaltyRoom||onlinePenaltyRole!=='host'||current.done||player!==current.turn)return;
+    if(!['left','center','right'].includes(direction))return;
+    let next;
+    if(current.phase==='shoot'){
+      next={...current,phase:'save',shot:direction,turn:player==='host'?'guest':'host',notice:(player==='host'?'Host':'Guest')+' shot '+direction+'. Opponent: choose your dive.'};
+    } else {
+      const scored=current.shot!==direction;
+      const scores={...current.scores};
+      const shooter=player==='host'?'guest':'host';
+      if(scored)scores[shooter]+=1;
+      const attempts=current.attempts+1;
+      const done=attempts>=10;
+      const nextShooter=attempts%2===0?'host':'guest';
+      next={...current,scores,attempts,phase:'shoot',shot:'center',turn:done?player:nextShooter,done,notice:done?'FULL TIME — '+scores.host+'–'+scores.guest+'. '+(scores.host===scores.guest?'It is a draw!':scores.host>scores.guest?'Host wins!':'Guest wins!'):(scored?'GOAL!':'SAVED!')+' '+(nextShooter==='host'?'Host':'Guest')+' shoots next.'};
+    }
+    onlinePenaltyRef.current=next;
+    setOnlinePenalty(next);
+  }
+  function chooseOnlinePenaltyAction(direction) {
+    if(!onlinePenaltyRoom||onlinePenalty.done||onlinePenalty.turn!==onlinePenaltyRole)return;
+    if(onlinePenaltyRole==='host')applyOnlinePenaltyAction('host','move',direction);
+    else onlinePenaltyChannelRef.current?.send({type:'broadcast',event:'penalty-action',payload:{room:onlinePenaltyRoom,player:'guest',direction}});
+  }
+  function restartOnlinePenaltyMatch() {
+    const next={turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'New shootout! Host shoots first.'};
+    if(onlinePenaltyRole==='host'){onlinePenaltyRef.current=next;setOnlinePenalty(next);}
+    else onlinePenaltyChannelRef.current?.send({type:'broadcast',event:'penalty-restart',payload:{room:onlinePenaltyRoom,player:'guest'}});
+  }
+  useEffect(()=>{
+    if(!onlinePenaltyRoom||!session?.user?.id||selectedGrinGame!=='football')return;
+    const room=onlinePenaltyRoom;
+    const channel=supabase.channel('grin-penalty-'+room,{config:{broadcast:{self:false}}});
+    onlinePenaltyChannelRef.current=channel;
+    channel.on('broadcast',{event:'penalty-action'},({payload})=>{
+      if(payload?.room===room&&onlinePenaltyRole==='host'&&payload.player==='guest')applyOnlinePenaltyAction('guest','move',payload.direction);
+    }).on('broadcast',{event:'penalty-restart'},({payload})=>{
+      if(payload?.room===room&&onlinePenaltyRole==='host') { const next={turn:'host',phase:'shoot',scores:{host:0,guest:0},attempts:0,shot:'center',done:false,notice:'New shootout! Host shoots first.'}; onlinePenaltyRef.current=next;setOnlinePenalty(next); }
+    }).on('broadcast',{event:'penalty-state'},({payload})=>{
+      if(payload?.room===room&&onlinePenaltyRole==='guest'&&payload.state){onlinePenaltyRef.current=payload.state;setOnlinePenalty(payload.state);}
+    }).on('broadcast',{event:'penalty-request-state'},({payload})=>{
+      if(payload?.room===room&&onlinePenaltyRole==='host')channel.send({type:'broadcast',event:'penalty-state',payload:{room,state:onlinePenaltyRef.current}});
+    }).subscribe(status=>{
+      if(status==='SUBSCRIBED'){
+        if(onlinePenaltyRole==='host')channel.send({type:'broadcast',event:'penalty-state',payload:{room,state:onlinePenaltyRef.current}});
+        else channel.send({type:'broadcast',event:'penalty-request-state',payload:{room}});
+      }
+    });
+    return()=>{if(onlinePenaltyChannelRef.current===channel)onlinePenaltyChannelRef.current=null;supabase.removeChannel(channel);};
+  },[onlinePenaltyRoom,onlinePenaltyRole,session?.user?.id,selectedGrinGame]);
+  useEffect(()=>{
+    if(!onlinePenaltyRoom||onlinePenaltyRole!=='host'||!onlinePenaltyChannelRef.current)return;
+    onlinePenaltyChannelRef.current.send({type:'broadcast',event:'penalty-state',payload:{room:onlinePenaltyRoom,state:onlinePenalty}});
+  },[onlinePenalty,onlinePenaltyRoom,onlinePenaltyRole]);
 
   function resetPenaltyShootout() {
     setPenaltyRound(1); setPenaltyPlayerGoals(0); setPenaltyBotGoals(0);
@@ -1318,6 +1405,10 @@ export default function App() {
   }
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
+    if(params.get('game')==='penalty'&&params.get('room')){
+      const code=(params.get('room')||'').toUpperCase();
+      if(/^[A-Z0-9]{6,12}$/.test(code)){setOnlinePenaltyRoom(code);setOnlinePenaltyRole('guest');setSelectedGrinGame('football');setActive('games');setOnlinePenalty(s=>({...s,notice:'You have been invited to a GRIN penalty shootout.'}));}
+    }
     if(params.get('game')==='memory'&&params.get('room')){
       const code=(params.get('room')||'').toUpperCase();
       if(/^[A-Z0-9]{6,12}$/.test(code)){setMemoryRoomCode(code);setMemoryRoomRole('guest');setSelectedGrinGame('memory');setActive('games');setMemoryNotice('You have been invited to Memory Match.');}
@@ -2255,6 +2346,16 @@ export default function App() {
         {triviaAnswer!==null ? <div className="trivia-feedback"><p><strong>{triviaAnswer===activeTriviaQuestions[triviaIndex].answer?'Correct!':'Not quite.'}</strong> {activeTriviaQuestions[triviaIndex].explain}</p><button type="button" className="primary" onClick={nextFootballTrivia}>{triviaIndex===activeTriviaQuestions.length-1?'See results':'Next question'} →</button></div> : <p className="game-turn-status">Choose your answer to lock it in.</p>}
       </>}
     </> : selectedGrinGame === 'football' ? <>
+      {onlinePenaltyRoom ? <>
+        <div className="feed-head"><div><h2>Penalty Shootout · Online ⚽</h2><p>Challenge a friend in a live, turn-based shootout.</p></div><Trophy size={25}/></div>
+        <div className="profile-form"><label>Room invitation link</label><input readOnly value={window.location.origin+window.location.pathname+'?game=penalty&room='+encodeURIComponent(onlinePenaltyRoom)} onFocus={e=>e.target.select()}/><div className="card-actions"><button type="button" className="primary" onClick={()=>{const link=window.location.origin+window.location.pathname+'?game=penalty&room='+encodeURIComponent(onlinePenaltyRoom);if(navigator.clipboard?.writeText)navigator.clipboard.writeText(link).then(()=>setOnlinePenalty(s=>({...s,notice:'Invite link copied. Share it with your opponent.'}))).catch(()=>window.prompt('Copy invite link:',link));else window.prompt('Copy invite link:',link);}}>Copy invite link</button><button type="button" className="secondary-btn" onClick={leaveOnlinePenaltyRoom}>Leave room</button></div><label>Join another room</label><div className="card-actions"><input value={onlinePenaltyJoinCode} onChange={e=>setOnlinePenaltyJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="button" className="secondary-btn" onClick={()=>joinOnlinePenaltyRoom()}>Join</button></div></div>
+        <div className="penalty-scoreboard"><div><span>HOST</span><strong>{onlinePenalty.scores.host}</strong></div><div className="penalty-score-divider">VS</div><div><span>GUEST</span><strong>{onlinePenalty.scores.guest}</strong></div></div>
+        <p className="penalty-round-label">{onlinePenalty.done?'Shootout complete':'Attempt '+(Math.floor(onlinePenalty.attempts/2)+1)+' of 5'} · {onlinePenalty.phase==='shoot'?'Shoot':'Goalkeeper dive'} · {onlinePenalty.turn===onlinePenaltyRole?'Your turn':onlinePenalty.turn==='host'?'Host’s turn':'Guest’s turn'}</p>
+        <div className="penalty-aim-pad" role="group" aria-label="Choose shot or dive direction">{['left','center','right'].map(direction=><button type="button" key={direction} className="penalty-aim-lane" disabled={onlinePenalty.done||onlinePenalty.turn!==onlinePenaltyRole} onClick={()=>chooseOnlinePenaltyAction(direction)}><span>{direction==='left'?'↖':direction==='center'?'↑':'↗'}</span><small>{onlinePenalty.phase==='shoot'?'SHOOT':'DIVE'} {direction==='center'?'CENTRE':direction.toUpperCase()}</small></button>)}</div>
+        <p className="game-turn-status" aria-live="polite">{onlinePenalty.notice}</p>{onlinePenalty.done&&<button type="button" className="primary" onClick={restartOnlinePenaltyMatch}>Rematch</button>}
+      </> : <>
+        <div className="profile-form"><h3>Play against a friend</h3><p>Create a private room, then send the invitation link. The host and guest take turns shooting and saving.</p><div className="card-actions"><button type="button" className="primary" onClick={createOnlinePenaltyRoom}>Create online match</button></div><form onSubmit={e=>{e.preventDefault();joinOnlinePenaltyRoom();}}><label>Join a friend's match</label><input value={onlinePenaltyJoinCode} onChange={e=>setOnlinePenaltyJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>
+
       <div className="feed-head"><div><h2>Penalty Shootout ⚽</h2><p>Five rounds against GRIN Bot. Shoot past the keeper, then dive to try to save its shot.</p></div><Trophy size={25}/></div>
       <div className="penalty-scoreboard" aria-live="polite">
         <div><span>You</span><strong>{penaltyPlayerGoals}</strong></div>
@@ -2286,6 +2387,7 @@ export default function App() {
         <p className="penalty-control-footnote">{penaltyDone?'Shootout complete. Run it back?':'Read the striker and choose your dive.'}</p>
       </div>}
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
+      </>}
     </> : selectedGrinGame === 'connect4' ? <>
       <section className="connect-four-hero"><div><span className="connect-four-kicker"><i/> GRIN ARCADE · STRATEGY</span><h2>Connect <em>Four</em></h2><p>Read the board. Block the threat. Line up four to win.</p></div><div className="connect-four-hero-art" aria-hidden="true"><i/><i/><i/><i/></div></section>
       <div className="connect-four-matchbar"><span><i className="disc-red"/> YOU <b>RED</b></span><span className="connect-four-vs">VS</span><span><i className="disc-yellow"/> GRIN BOT <b>GOLD</b></span></div>
