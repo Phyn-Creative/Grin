@@ -2583,3 +2583,20 @@ button:active { transform: translateY(1px); }
 [data-grin-theme="dark"] .snake-cell{background:#26372b}
 [data-grin-theme="dark"] .snake-cell.snake-body{background:#3bb978}
 [data-grin-theme="dark"] .snake-cell.snake-head{background:#8cdbad}
+
+
+/* Additional GRIN mini-games */
+.memory-game-board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;width:min(100%,440px);margin:12px auto}
+.memory-card{aspect-ratio:1;border:1px solid #c9ddcf;border-radius:14px;background:linear-gradient(145deg,#174a32,#226b49);color:#fff;font-size:clamp(24px,7vw,38px);font-weight:800;box-shadow:0 3px 10px rgba(17,60,39,.1);cursor:pointer;touch-action:manipulation}
+.memory-card.revealed{background:var(--surface,#fff);color:var(--text,#173528);border-color:#9fc8ad}
+.memory-card.matched{background:#e5f4e9;border-color:#76ae88;cursor:default}
+.rps-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(100%,480px);margin:18px auto}
+.rps-choice{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:118px;border:1px solid #d7e6dc;border-radius:16px;background:var(--surface,#fff);color:var(--text,#173528);cursor:pointer;box-shadow:0 3px 12px rgba(17,60,39,.06)}
+.rps-choice span{font-size:clamp(32px,8vw,48px)}
+.rps-choice strong{font-size:14px}
+.rps-choice.selected{border-color:#268657;background:#eaf7ee;box-shadow:0 0 0 2px rgba(38,134,87,.12)}
+.rps-score{display:flex;justify-content:center;gap:clamp(12px,4vw,28px);flex-wrap:wrap;margin:12px 0;color:var(--text,#173528)}
+.rps-score span{display:flex;gap:6px;align-items:center}
+[data-grin-theme="dark"] .memory-card.revealed,[data-grin-theme="dark"] .rps-choice{background:var(--surface,#1c2922);color:var(--text,#f0f4f1)}
+[data-grin-theme="dark"] .memory-card.matched,[data-grin-theme="dark"] .rps-choice.selected{background:#244a34}
+@media(max-width:420px){.memory-game-board{gap:7px}.memory-card{border-radius:10px}.rps-choice{min-height:100px;border-radius:12px}}
