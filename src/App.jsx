@@ -40,6 +40,13 @@ export default function App() {
   const [connectFourBoard, setConnectFourBoard] = useState(Array(42).fill(''));
   const [connectFourNotice, setConnectFourNotice] = useState('Your turn — choose a column.');
   const [connectFourOver, setConnectFourOver] = useState(false);
+  const [penaltyRound, setPenaltyRound] = useState(1);
+  const [penaltyPlayerGoals, setPenaltyPlayerGoals] = useState(0);
+  const [penaltyBotGoals, setPenaltyBotGoals] = useState(0);
+  const [penaltyPhase, setPenaltyPhase] = useState('shoot');
+  const [penaltyDone, setPenaltyDone] = useState(false);
+  const [penaltyNotice, setPenaltyNotice] = useState('Pick a direction to take your first penalty.');
+
 
 
   const [snakeBody, setSnakeBody] = useState([34, 33, 32]);
@@ -250,6 +257,47 @@ export default function App() {
     if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
     else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
     else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
+  }
+
+  function resetPenaltyShootout() {
+    setPenaltyRound(1); setPenaltyPlayerGoals(0); setPenaltyBotGoals(0);
+    setPenaltyPhase('shoot'); setPenaltyDone(false);
+    setPenaltyNotice('Pick a direction to take your first penalty.');
+  }
+  function playPenaltyDirection(direction) {
+    if (penaltyDone) return;
+    const directions = ['left','center','right'];
+    if (penaltyPhase === 'shoot') {
+      const keeper = directions[Math.floor(Math.random() * directions.length)];
+      const scored = keeper !== direction;
+      const goals = penaltyPlayerGoals + (scored ? 1 : 0);
+      setPenaltyPlayerGoals(goals);
+      setPenaltyPhase('save');
+      setPenaltyNotice(scored
+        ? 'GOAL! You shot '+direction+' and beat GRIN Bot. Now defend — pick where to dive.'
+        : 'Saved! GRIN Bot guessed '+direction+'. Your turn to defend — pick where to dive.');
+      return;
+    }
+    const shot = directions[Math.floor(Math.random() * directions.length)];
+    const saved = shot === direction;
+    const botGoals = penaltyBotGoals + (saved ? 0 : 1);
+    setPenaltyBotGoals(botGoals);
+    if (penaltyRound >= 5) {
+      setPenaltyDone(true);
+      setPenaltyPhase('shoot');
+      setPenaltyBotGoals(botGoals);
+      setPenaltyNotice(penaltyPlayerGoals > botGoals
+        ? 'Full time — you win '+penaltyPlayerGoals+'–'+botGoals+'! 🏆'
+        : penaltyPlayerGoals < botGoals
+          ? 'Full time — GRIN Bot wins '+penaltyPlayerGoals+'–'+botGoals+'. Rematch?'
+          : 'Full time — it’s a '+penaltyPlayerGoals+'–'+botGoals+' draw!');
+    } else {
+      setPenaltyRound(penaltyRound + 1);
+      setPenaltyPhase('shoot');
+      setPenaltyNotice(saved
+        ? 'SAVE! GRIN Bot shot '+shot+' and you dived the right way. Round '+(penaltyRound+1)+' — take your penalty.'
+        : 'GRIN Bot scores, shooting '+shot+'. Round '+(penaltyRound+1)+' — take your penalty.');
+    }
   }
 
   function create2048Board(){
@@ -2034,8 +2082,25 @@ export default function App() {
       <button type="button" className={selectedGrinGame === 'rps' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('rps')}>Rock Paper Scissors</button>
       <button type="button" className={selectedGrinGame === '2048' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('2048')}>2048</button>
       <button type="button" className={selectedGrinGame === 'connect4' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('connect4')}>Connect Four</button>
+      <button type="button" className={selectedGrinGame === 'football' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('football')}>Penalty Shootout ⚽</button>
     </div>
-    {selectedGrinGame === 'connect4' ? <>
+    {selectedGrinGame === 'football' ? <>
+      <div className="feed-head"><div><h2>Penalty Shootout ⚽</h2><p>Five rounds against GRIN Bot. Shoot past the keeper, then dive to try to save its shot.</p></div><Trophy size={25}/></div>
+      <div className="penalty-scoreboard" aria-live="polite">
+        <div><span>You</span><strong>{penaltyPlayerGoals}</strong></div>
+        <div className="penalty-score-divider">VS</div>
+        <div><span>GRIN Bot</span><strong>{penaltyBotGoals}</strong></div>
+      </div>
+      <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
+      <div className="penalty-goal" aria-hidden="true"><div className="penalty-net"><span>🥅</span></div><div className="penalty-ball">⚽</div></div>
+      <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
+      <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
+        {['left','center','right'].map(direction=><button key={direction} type="button" className="secondary-btn" onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone}>
+          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span>{penaltyPhase === 'shoot' ? 'Shoot '+direction : 'Dive '+direction}
+        </button>)}
+      </div>
+      <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
+    </> : selectedGrinGame === 'connect4' ? <>
       <div className="feed-head"><div><h2>Connect Four</h2><p>Drop four discs in a row horizontally, vertically, or diagonally against GRIN Bot.</p></div><Trophy size={25}/></div>
       <div className="connect-four-board" role="group" aria-label="Connect Four board">
         {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
