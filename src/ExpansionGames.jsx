@@ -56,7 +56,7 @@ export default function ExpansionGames() {
    afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
    setChess(afterBot);setChessTurn('white');setChessThinking(false);
    setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
-  },1800);
+  },1200);
  };
  const draughtTap=(i)=>{
   if(draughtTurn!=='white')return;
