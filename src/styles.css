@@ -2754,3 +2754,35 @@ button:active { transform: translateY(1px); }
 @keyframes penalty3d-result{0%{opacity:0;transform:translate(-50%,-50%) scale(.8)}20%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.06)}}
 @media(max-width:420px){.penalty-3d-canvas{height:350px}.penalty-3d-hud{padding:10px;font-size:8px}.penalty-3d-shell{border-radius:10px}}
 @media(prefers-reduced-motion:reduce){.penalty-3d-result.is-visible{animation:none;opacity:1}}
+
+
+/* Penalty Shootout — premium matchday presentation and thumb-friendly controls */
+.penalty-3d-shell{position:relative;overflow:hidden;border:1px solid rgba(220,190,112,.32)!important;border-radius:18px!important;background:#07111c!important;box-shadow:0 18px 44px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.06)!important}
+.penalty-3d-hud{position:absolute!important;z-index:4;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px!important;background:linear-gradient(90deg,rgba(4,10,17,.92),rgba(4,10,17,.2))!important;color:#f4e5bd!important;font-size:9px!important;font-weight:900;letter-spacing:1.5px!important;text-transform:uppercase}
+.penalty-3d-hud span:last-child{border:1px solid rgba(231,196,109,.55);border-radius:99px;padding:5px 9px;color:#f5d98b;background:rgba(6,15,23,.7)}
+.penalty-3d-canvas{min-height:clamp(300px,74vw,440px)!important;background:radial-gradient(ellipse at 50% 38%,#263c4a 0%,#111e2b 60%,#07111b 100%)}
+.penalty-3d-canvas canvas{display:block;width:100%;height:100%;outline:none}
+.penalty-3d-result{z-index:5!important;top:47%!important;font-size:clamp(27px,7vw,48px)!important;letter-spacing:2px!important;text-shadow:0 4px 22px rgba(0,0,0,.7)!important}
+.penalty-3d-hint{position:absolute!important;z-index:4;bottom:0;left:0;right:0;padding:18px 12px 11px!important;background:linear-gradient(0deg,rgba(4,10,16,.88),transparent)!important;color:#d7e2e7!important;font-size:10px!important;letter-spacing:1.7px!important;text-transform:uppercase}
+.penalty-control-heading{display:flex;align-items:center;gap:8px;max-width:600px;margin:18px auto 9px;padding:0 2px;color:var(--text,#173528);font-size:11px;letter-spacing:1.2px}
+.penalty-control-heading strong{font-weight:900}
+.penalty-control-dot{width:7px;height:7px;flex:none;border-radius:50%;background:#d7ae53;box-shadow:0 0 0 4px rgba(215,174,83,.15)}
+.penalty-control-tip{margin-left:auto;color:var(--muted,#68786e);font-size:10px;letter-spacing:.3px;text-transform:none;font-weight:600}
+.penalty-directions{max-width:600px!important;gap:10px!important;margin:0 auto!important}
+.penalty-action-btn{position:relative!important;min-height:96px!important;overflow:hidden;border-radius:14px!important;border:1px solid rgba(197,166,94,.38)!important;background:linear-gradient(155deg,#172a31,#0c1b23)!important;color:#f8f6ed!important;box-shadow:0 5px 0 #061016,0 10px 20px rgba(0,0,0,.12)!important;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease!important;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.penalty-action-btn:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(222,190,111,.12),transparent 55%);pointer-events:none}
+.penalty-action-btn .penalty-control-arrow{display:block;font-size:28px!important;line-height:1.05;margin-bottom:5px;color:#f0cd79!important}
+.penalty-action-btn strong{font-size:12px!important;letter-spacing:1.6px!important}
+.penalty-action-btn small{font-size:9px!important;letter-spacing:1px!important;color:#c4d0d0!important}
+.penalty-action-btn em{position:absolute;top:8px;right:9px;font-style:normal;font-size:9px;color:rgba(240,205,121,.55);font-weight:900}
+.penalty-action-btn:hover:not(:disabled){transform:translateY(-2px);border-color:#e5c26d!important;box-shadow:0 7px 0 #061016,0 15px 24px rgba(0,0,0,.2)!important}
+.penalty-action-btn:active:not(:disabled){transform:translateY(3px);box-shadow:0 2px 0 #061016!important}
+.penalty-action-btn:focus-visible{outline:3px solid #f1d17e;outline-offset:3px}
+.penalty-action-btn:disabled{opacity:.58;filter:saturate(.65)}
+.penalty-action-btn.dive-action{background:linear-gradient(155deg,#163b32,#0b211c)!important;border-color:rgba(105,204,151,.42)!important}
+.penalty-action-btn.dive-action .penalty-control-arrow{color:#8ee0ad!important}
+.penalty-control-footnote{max-width:600px;margin:9px auto 0!important;text-align:center;color:var(--muted,#68786e);font-size:11px;line-height:1.5}
+.penalty-scoreboard{max-width:460px;padding:12px 16px;margin:12px auto 8px!important;border:1px solid rgba(171,151,101,.22);border-radius:14px;background:linear-gradient(120deg,rgba(218,192,126,.09),rgba(100,130,110,.05))}
+.penalty-round-label{font-weight:900!important}
+@media(max-width:480px){.penalty-3d-canvas{min-height:290px!important}.penalty-action-btn{min-height:88px!important;padding:10px 5px!important}.penalty-action-btn .penalty-control-arrow{font-size:25px!important}.penalty-action-btn strong{font-size:11px!important}.penalty-action-btn small{font-size:8px!important;letter-spacing:.6px!important}.penalty-directions{gap:7px!important}.penalty-control-heading{margin-top:14px}}
+@media(prefers-reduced-motion:reduce){.penalty-action-btn{transition:none!important}}
