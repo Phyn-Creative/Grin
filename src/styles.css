@@ -2786,3 +2786,31 @@ button:active { transform: translateY(1px); }
 .penalty-round-label{font-weight:900!important}
 @media(max-width:480px){.penalty-3d-canvas{min-height:290px!important}.penalty-action-btn{min-height:88px!important;padding:10px 5px!important}.penalty-action-btn .penalty-control-arrow{font-size:25px!important}.penalty-action-btn strong{font-size:11px!important}.penalty-action-btn small{font-size:8px!important;letter-spacing:.6px!important}.penalty-directions{gap:7px!important}.penalty-control-heading{margin-top:14px}}
 @media(prefers-reduced-motion:reduce){.penalty-action-btn{transition:none!important}}
+
+/* Penalty console controls — physical-feeling, gameplay-first */
+.penalty-console-label{display:flex;align-items:center;gap:9px;max-width:520px;margin:15px auto 8px;color:var(--muted,#758179);font-size:9px;font-weight:900;letter-spacing:1.4px}
+.penalty-console-label strong{color:var(--text,#173528);font-size:11px;letter-spacing:1.1px}
+.penalty-console-status{margin-left:auto;color:#13864d;font-size:9px}
+.penalty-aim-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;max-width:520px;margin:0 auto 12px}
+.penalty-aim-lane{min-height:61px;display:flex;align-items:center;justify-content:center;gap:9px;border:1px solid #c9d0ca;border-radius:10px;background:linear-gradient(180deg,#f4f5f0,#dce2dc);color:#26352d;box-shadow:inset 0 1px 0 #fff,0 3px 0 #a8b2a9;touch-action:manipulation}
+.penalty-aim-lane span{font-size:24px;font-weight:900;color:#526357}
+.penalty-aim-lane small{font-size:9px;font-weight:900;letter-spacing:1px}
+.penalty-aim-lane.is-aimed{border-color:#d5ad51;background:linear-gradient(180deg,#fff4cb,#e9cc7d);box-shadow:inset 0 1px 0 #fff8df,0 3px 0 #a57b2c,0 0 0 2px rgba(213,173,81,.16);color:#32270d}
+.penalty-aim-lane.is-aimed span{color:#8b641b}
+.penalty-power-row{max-width:520px;margin:0 auto 11px;padding:0 2px}
+.penalty-power-copy{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;color:var(--muted,#68786e);font-size:9px;font-weight:900;letter-spacing:1.4px}
+.penalty-power-copy span{color:var(--text,#173528);font-variant-numeric:tabular-nums;font-size:12px}
+.penalty-power-meter{height:8px;border-radius:99px;overflow:hidden;background:#d9dfd8;box-shadow:inset 0 1px 3px rgba(0,0,0,.15)}
+.penalty-power-meter i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#3a9d5d 0%,#d7bb54 65%,#d85b45 100%);transition:width .035s linear}
+.penalty-r2-trigger{position:relative;display:grid;grid-template-columns:64px 1fr;grid-template-rows:auto auto;align-items:center;column-gap:13px;width:100%;max-width:520px;min-height:76px;margin:0 auto;border:1px solid #313a40;border-radius:13px;padding:10px 15px;background:linear-gradient(180deg,#343d43,#171f24);color:#fff;box-shadow:0 5px 0 #080d10,0 9px 18px rgba(0,0,0,.18);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;transition:transform .1s,box-shadow .1s,border-color .1s}
+.penalty-r2-trigger:before{content:"";position:absolute;inset:1px;border-radius:12px;border:1px solid rgba(255,255,255,.09);pointer-events:none}
+.penalty-r2-pill{grid-row:1/3;display:grid;place-items:center;min-height:43px;border:1px solid #9da6aa;border-radius:9px;background:linear-gradient(180deg,#f0f1ed,#aeb7b8);color:#20282d;font-size:23px;font-weight:1000;font-style:italic;letter-spacing:-1px;box-shadow:inset 0 2px 0 #fff,0 2px 0 #080d10}
+.penalty-r2-label{align-self:end;text-align:left;font-size:12px;font-weight:1000;letter-spacing:1.6px}
+.penalty-r2-sub{align-self:start;text-align:left;margin-top:4px;color:#b8c3c4;font-size:9px;font-weight:800;letter-spacing:1.4px}
+.penalty-r2-trigger.is-charging{transform:translateY(4px);border-color:#e2bf65;background:linear-gradient(180deg,#46534d,#1c3028);box-shadow:0 1px 0 #080d10,0 0 0 3px rgba(220,185,91,.18)}
+.penalty-r2-trigger.is-charging .penalty-r2-pill{background:linear-gradient(180deg,#ffe6a0,#d9b65e);border-color:#fff0c5}
+.penalty-r2-trigger:disabled{opacity:.55}
+.penalty-console-defense{max-width:520px;margin:0 auto}
+.penalty-dive-pad .penalty-action-btn{min-height:76px}
+.penalty-dive-pad .penalty-action-btn .penalty-control-arrow{font-size:26px!important;color:#9ce8b7!important}
+@media(max-width:420px){.penalty-console-label{margin-top:12px}.penalty-aim-lane{min-height:55px;gap:6px}.penalty-aim-lane span{font-size:21px}.penalty-aim-lane small{font-size:8px}.penalty-r2-trigger{min-height:70px;padding:9px 12px;grid-template-columns:58px 1fr}.penalty-r2-label{font-size:11px}.penalty-dive-pad .penalty-action-btn{min-height:72px}}
