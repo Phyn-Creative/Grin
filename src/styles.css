@@ -2225,3 +2225,12 @@ button:active { transform: translateY(1px); }
   .chat-pin-btn,.chat-action-btn { flex-basis:28px; width:28px; height:32px; opacity:1; }
   .chat-row-wrap .chat-row { gap:8px; padding-left:10px; padding-right:7px; }
 }
+
+
+/* Search within the currently loaded conversation history */
+.message-search-wrap { display:flex; align-items:center; gap:9px; position:sticky; top:0; z-index:2; margin:0 0 10px; padding:9px 11px; border:1px solid #e1e8df; border-radius:12px; background:var(--panel, #fffdf8); color:#758278; }
+.message-search-wrap input { flex:1; min-width:0; border:0; outline:0; background:transparent; color:inherit; font:inherit; font-size:13px; }
+.message-search-wrap button { display:grid; place-items:center; border:0; border-radius:7px; padding:4px; background:transparent; color:inherit; cursor:pointer; }
+.message-search-count { margin:0 2px 10px; color:#758278; font-size:11px; }
+[data-grin-theme="dark"] .message-search-wrap { background:#1e2922; border-color:#3b4a40; color:#d4e0d6; }
+[data-grin-theme="dark"] .message-search-count { color:#a9b9ad; }
