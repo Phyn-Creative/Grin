@@ -2,8 +2,87 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageCircle, Users, Compass, Bell, UserRound, Search, Plus, Send, Smile, LogOut, House, Palette, ShoppingBag, BriefcaseBusiness, Store, MoreHorizontal, Pencil, Trash2, X, Archive, BellOff, Volume2, ChevronLeft, ChevronRight, Eye, Settings as SettingsIcon, Sun, Moon, Mic, Camera, Square, ShieldAlert, Ban, Pin, Gamepad2, Trophy } from 'lucide-react';
 import { supabase } from './lib/supabase';
+import * as THREE from 'three';
 
 const fallbackChats = [{ id: 'welcome', name: 'Welcome to GRIN', preview: 'This is where your conversations come alive.', initials: 'G' }];
+
+function Penalty3D({ animation, result, phase }) {
+  const hostRef = useRef(null);
+  const sceneRef = useRef(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    let renderer, raf = 0, disposed = false;
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color('#111b27');
+    scene.fog = new THREE.Fog('#111b27', 22, 48);
+    const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 100);
+    camera.position.set(0, 4.2, 13.5);
+    camera.lookAt(0, 1.2, -2.5);
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }); }
+    catch (e) { host.innerHTML = '<div class="penalty-3d-fallback">3D graphics are unavailable in this browser. Try opening GRIN in Chrome.</div>'; return; }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.setSize(host.clientWidth || 360, host.clientHeight || 360);
+    host.appendChild(renderer.domElement);
+    scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x183323, 2.1));
+    const sun = new THREE.DirectionalLight(0xfff1d2, 3);
+    sun.position.set(-5, 11, 8); sun.castShadow = true; sun.shadow.mapSize.set(512,512); scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x88baff, 1.5); fill.position.set(7,6,-8); scene.add(fill);
+    const material = (color, roughness=0.8) => new THREE.MeshStandardMaterial({color, roughness});
+    const white = material('#e5ebe7',0.45), net = new THREE.MeshStandardMaterial({color:'#dce7e2',transparent:true,opacity:0.28});
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(36,42),material('#17613b'));
+    ground.rotation.x=-Math.PI/2; ground.position.set(0,-0.04,-3); ground.receiveShadow=true; scene.add(ground);
+    for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.PlaneGeometry(36,2.55),material(i%2?'#1b7043':'#145734'));m.rotation.x=-Math.PI/2;m.position.set(0,-0.025,14-i*4.5);scene.add(m);}
+    const line=(a,b,mat=white,r=.025)=>{const d=new THREE.Vector3().subVectors(b,a);const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length(),6),mat);m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());scene.add(m);return m;};
+    line(new THREE.Vector3(-7,.015,-13),new THREE.Vector3(7,.015,-13));line(new THREE.Vector3(-7,.015,-13),new THREE.Vector3(-7,.015,-5));line(new THREE.Vector3(7,.015,-13),new THREE.Vector3(7,.015,-5));line(new THREE.Vector3(-7,.015,-5),new THREE.Vector3(7,.015,-5));
+    const spot=new THREE.Mesh(new THREE.CircleGeometry(.075,16),white);spot.rotation.x=-Math.PI/2;spot.position.set(0,.018,5);scene.add(spot);
+    const W=7.2,H=2.85,Z=-6.2,D=1.45;
+    line(new THREE.Vector3(-W/2,.04,Z),new THREE.Vector3(W/2,.04,Z),white,.06);
+    line(new THREE.Vector3(-W/2,.04,Z),new THREE.Vector3(-W/2,H,Z),white,.06);line(new THREE.Vector3(W/2,.04,Z),new THREE.Vector3(W/2,H,Z),white,.06);line(new THREE.Vector3(-W/2,H,Z),new THREE.Vector3(W/2,H,Z),white,.06);
+    line(new THREE.Vector3(-W/2,H,Z),new THREE.Vector3(-W/2,H-.15,Z-D));line(new THREE.Vector3(W/2,H,Z),new THREE.Vector3(W/2,H-.15,Z-D));line(new THREE.Vector3(-W/2,H-.15,Z-D),new THREE.Vector3(W/2,H-.15,Z-D));
+    for(let x=-W/2;x<=W/2+.01;x+=.45)line(new THREE.Vector3(x,.05,Z),new THREE.Vector3(x,H,Z),net,.012);
+    for(let y=.25;y<H;y+=.38)line(new THREE.Vector3(-W/2,y,Z),new THREE.Vector3(W/2,y,Z),net,.012);
+    for(let x=-W/2;x<=W/2+.01;x+=.6)line(new THREE.Vector3(x,.05,Z-D),new THREE.Vector3(x,H-.15,Z),net,.01);
+    for(let tier=0;tier<5;tier++){const row=new THREE.Mesh(new THREE.BoxGeometry(35,.58,1.2),material(tier%2?'#293847':'#1d2b3a'));row.position.set(0,2+tier*.72,-15.5-tier*.42);scene.add(row);for(let j=0;j<50;j++){const colors=['#37434c','#7b6556','#495563','#293746'];const seat=new THREE.Mesh(new THREE.BoxGeometry(.35,.2,.2),material(colors[(j+tier)%4]));seat.position.set(-16.5+j*.67,2.35+tier*.72,-15.1-tier*.42);scene.add(seat);}}
+    for(const x of [-12,12]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,7,8),material('#152334'));pole.position.set(x,3.5,-8);scene.add(pole);const light=new THREE.PointLight(0xfff0c8,28,24,2);light.position.set(x,7,-7);scene.add(light);}
+    const keeper=new THREE.Group();keeper.position.set(0,0,-5.75);scene.add(keeper);
+    const skin=material('#a96f4b'),jersey=material('#e5b631'),shorts=material('#17263a'),glove=material('#f1f0dc');
+    const sphere=(r,m,p,scale)=>{const o=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),m);o.position.set(...p);if(scale)o.scale.set(...scale);o.castShadow=true;keeper.add(o);};
+    const limb=(p1,p2,r,m)=>{const a=new THREE.Vector3(...p1),b=new THREE.Vector3(...p2),d=new THREE.Vector3().subVectors(b,a),o=new THREE.Mesh(new THREE.CylinderGeometry(r*.72,r,d.length(),8),m);o.position.copy(a).add(b).multiplyScalar(.5);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());o.castShadow=true;keeper.add(o);};
+    sphere(.22,skin,[0,2.25,0],[.86,1,.86]);
+    const torso=new THREE.Mesh(new THREE.CapsuleGeometry(.28,.56,4,8),jersey);torso.position.set(0,1.62,0);torso.castShadow=true;keeper.add(torso);
+    const hip=new THREE.Mesh(new THREE.BoxGeometry(.52,.22,.32),shorts);hip.position.set(0,1.12,0);keeper.add(hip);
+    limb([-.25,1.85,0],[-.62,1.45,0],.105,jersey);limb([-.62,1.45,0],[-.94,1.55,0],.09,jersey);limb([.25,1.85,0],[.62,1.45,0],.105,jersey);limb([.62,1.45,0],[.94,1.55,0],.09,jersey);
+    sphere(.13,glove,[-.96,1.57,0]);sphere(.13,glove,[.96,1.57,0]);
+    limb([-.16,1.05,0],[-.25,.52,0],.13,shorts);limb([.16,1.05,0],[.25,.52,0],.13,shorts);limb([-.25,.52,0],[-.3,.12,.06],.09,shorts);limb([.25,.52,0],[.3,.12,.06],.09,shorts);
+    const ball=new THREE.Group();const ballMat=material('#f1f2ed',.4);const core=new THREE.Mesh(new THREE.SphereGeometry(.28,24,18),ballMat);core.castShadow=true;ball.add(core);
+    const patchMat=material('#252b31',.5);for(let i=0;i<5;i++){const p=new THREE.Mesh(new THREE.CircleGeometry(.075,5),patchMat);p.position.set(Math.cos(i*Math.PI*2/5)*.14,Math.sin(i*Math.PI*2/5)*.14,.235);p.lookAt(new THREE.Vector3(p.position.x*2,p.position.y*2,1));ball.add(p);}
+    ball.position.set(0,.3,5);scene.add(ball);
+    const shadow=new THREE.Mesh(new THREE.CircleGeometry(.42,24),new THREE.MeshBasicMaterial({color:'#07120c',transparent:true,opacity:.28,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.position.set(0,.025,5);scene.add(shadow);
+    sceneRef.current={renderer,camera,scene,host,ball,keeper,shadow};
+    const resize=()=>{const w=Math.max(1,host.clientWidth),h=Math.max(1,host.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);};
+    const obs=typeof ResizeObserver!=='undefined'?new ResizeObserver(resize):null;obs?.observe(host);resize();
+    const draw=()=>{if(disposed)return;renderer.render(scene,camera);raf=requestAnimationFrame(draw);};draw();
+    return ()=>{disposed=true;cancelAnimationFrame(raf);obs?.disconnect();renderer.dispose();scene.traverse(o=>{o.geometry?.dispose?.();if(Array.isArray(o.material))o.material.forEach(m=>m.dispose?.());else o.material?.dispose?.();});if(renderer.domElement.parentNode===host)host.removeChild(renderer.domElement);sceneRef.current=null;};
+  }, []);
+  useEffect(()=>{
+    const o=sceneRef.current;if(!o)return;
+    const {ball,keeper,shadow}=o;
+    ball.position.set(0,.3,5);ball.rotation.set(0,0,0);shadow.position.set(0,.025,5);shadow.scale.setScalar(1);
+    keeper.position.set(0,0,-5.75);keeper.rotation.set(0,0,0);keeper.scale.set(1,1,1);
+    if(!animation||animation==='idle')return;
+    const a=animation.match(/shot-(left|center|right)-(goal|saved)-keeper-(left|center|right)/);
+    const b=animation.match(/keeper-(left|center|right)-(save|goal)-shot-(left|center|right)/);
+    const match=a||b;if(!match)return;
+    const target=match[1],saved=a?match[2]==='saved':match[2]==='save';
+    const start=performance.now(),duration=1050;let frame=0;
+    const tick=now=>{const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,2.4);const x=target==='left'?-2.45:target==='right'?2.45:0;const y=saved?1.45:(target==='center'?2.05:1.85);ball.position.set(x*e,.3+(y-.3)*e+Math.sin(t*Math.PI)*1.1,5+(-10.65)*e);ball.rotation.x=e*7;ball.rotation.z=e*4;shadow.position.set(ball.position.x,.025,ball.position.z);shadow.scale.setScalar(1-e*.62);if(saved||b){const d=target==='left'?-1:target==='right'?1:0;keeper.position.x=d*1.75*e;keeper.rotation.z=-d*.8*e;keeper.rotation.x=-.28*e;keeper.scale.set(1+.12*e,1-.1*e,1);}if(t<1)frame=requestAnimationFrame(tick);};
+    frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
+  },[animation]);
+  return <div className="penalty-3d-shell"><div className="penalty-3d-hud"><span>GRIN 3D FOOTBALL</span><span>{phase==='shoot'?'ATTACK':'GOALKEEPER'}</span></div><div className="penalty-3d-canvas" ref={hostRef}/><div className={'penalty-3d-result'+(animation!=='idle'?' is-visible':'')}>{animation!=='idle'?result:''}</div><div className="penalty-3d-hint">{phase==='shoot'?'Pick your shot placement':'Read the shot and dive'}</div></div>;
+}
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -2098,19 +2177,7 @@ export default function App() {
         <div><span>GRIN Bot</span><strong>{penaltyBotGoals}</strong></div>
       </div>
       <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
-      <div className={'penalty-arena '+(penaltyAnimation !== 'idle' ? 'is-active '+penaltyAnimation : '')} aria-label="Animated penalty shootout">
-        <div className="penalty-broadcast-bar"><span>GRIN FOOTBALL</span><span>THE PENALTY SERIES</span><b>LIVE</b></div>
-        <div className="penalty-stadium-lights"><i/><i/><i/><i/></div>
-        <div className="penalty-crowd" aria-hidden="true"><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/></div>
-        <div className="penalty-pitch">
-          <div className="penalty-pitch-lines"/>
-          <div className="penalty-goal-frame"><div className="penalty-goal-net"/></div>
-          <div className="penalty-keeper" aria-label="GRIN Bot goalkeeper"><span className="keeper-head"/><span className="keeper-body"/><span className="keeper-arm keeper-arm-left"/><span className="keeper-arm keeper-arm-right"/><span className="keeper-leg keeper-leg-left"/><span className="keeper-leg keeper-leg-right"/></div>
-          <div className="penalty-ball" aria-label="Football"><span/></div>
-          <div className="penalty-shot-flash">{penaltyLastResult}</div>
-        </div>
-        <div className="penalty-arena-caption">{penaltyAnimation !== 'idle' ? (penaltyLastResult || 'PLAY!') : penaltyPhase === 'shoot' ? 'READ THE KEEPER. PICK YOUR CORNER.' : 'WATCH THE STRIKER. COMMIT TO YOUR DIVE.'}</div>
-      </div>
+      <Penalty3D animation={penaltyAnimation} result={penaltyLastResult} phase={penaltyPhase} />
       <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
       <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
         {['left','center','right'].map(direction=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
