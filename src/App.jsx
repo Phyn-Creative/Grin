@@ -2099,21 +2099,22 @@ export default function App() {
       </div>
       <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
       <div className={'penalty-arena '+(penaltyAnimation !== 'idle' ? 'is-active '+penaltyAnimation : '')} aria-label="Animated penalty shootout">
+        <div className="penalty-broadcast-bar"><span>GRIN FOOTBALL</span><span>THE PENALTY SERIES</span><b>LIVE</b></div>
         <div className="penalty-stadium-lights"><i/><i/><i/><i/></div>
-        <div className="penalty-crowd" aria-hidden="true">● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●</div>
+        <div className="penalty-crowd" aria-hidden="true"><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/><span/></div>
         <div className="penalty-pitch">
           <div className="penalty-pitch-lines"/>
           <div className="penalty-goal-frame"><div className="penalty-goal-net"/></div>
           <div className="penalty-keeper" aria-label="GRIN Bot goalkeeper"><span className="keeper-head"/><span className="keeper-body"/><span className="keeper-arm keeper-arm-left"/><span className="keeper-arm keeper-arm-right"/><span className="keeper-leg keeper-leg-left"/><span className="keeper-leg keeper-leg-right"/></div>
-          <div className="penalty-ball" aria-label="Football">⚽</div>
+          <div className="penalty-ball" aria-label="Football"><span/></div>
           <div className="penalty-shot-flash">{penaltyLastResult}</div>
         </div>
-        <div className="penalty-arena-caption">{penaltyAnimation !== 'idle' ? (penaltyLastResult || 'PLAY!') : penaltyPhase === 'shoot' ? 'YOUR SHOT • PICK A CORNER' : 'DEFEND • CHOOSE YOUR DIVE'}</div>
+        <div className="penalty-arena-caption">{penaltyAnimation !== 'idle' ? (penaltyLastResult || 'PLAY!') : penaltyPhase === 'shoot' ? 'READ THE KEEPER. PICK YOUR CORNER.' : 'WATCH THE STRIKER. COMMIT TO YOUR DIVE.'}</div>
       </div>
       <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
       <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
         {['left','center','right'].map(direction=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
-          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction.toUpperCase()}</small>
+          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction === 'left' ? 'LEFT CORNER' : direction === 'center' ? 'STRAIGHT DOWN' : 'RIGHT CORNER'}</small>
         </button>)}
       </div>
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
