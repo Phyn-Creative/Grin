@@ -231,9 +231,10 @@ export default function App() {
     try { localStorage.setItem('grin-toasts', toastEnabled ? 'on' : 'off'); } catch {}
   }, [toastEnabled]);
 
-  // Keep swipe destinations in the same predictable order as the primary app areas.
-  const swipePages = ['discover','chats','status','directory','explore'];
-  const swipeExcluded = 'input,textarea,select,video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,[data-no-page-swipe="true"]';
+  // Keep gestures limited to the three primary areas, in a fixed order.
+  // Controls, media, chat panes and horizontal carousels keep their own gestures.
+  const swipePages = ['discover','chats','explore'];
+  const swipeExcluded = 'input,textarea,select,button,a,[role="button"],video,audio,[contenteditable="true"],.grin-status-viewer,.grin-stories-strip,.composer,.feed-tabs,.post-footer,.post-media,.chat-list,.chat-window,.chat-messages,[data-no-page-swipe="true"]';
   function handleSwipeStart(event) {
     if (event.touches?.length !== 1) { swipeStart.current = null; return; }
     const target = event.target;
@@ -247,8 +248,8 @@ export default function App() {
     if (start.target?.closest?.(swipeExcluded)) return;
     const dx = event.changedTouches[0].clientX - start.x;
     const dy = event.changedTouches[0].clientY - start.y;
-    // Only a deliberate horizontal gesture changes sections; vertical scrolling stays native.
-    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    // Require a clear horizontal intent so normal scrolling never changes pages.
+    if (Math.abs(dx) < 80 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     const current = swipePages.indexOf(active);
     if (current < 0) return;
     const next = current + (dx < 0 ? 1 : -1);
@@ -623,20 +624,37 @@ export default function App() {
     return enriched;
   }
   useEffect(() => {
-    if (!session) return;
+    if (!session?.user?.id) return;
+    let toastTimer;
     const channel = supabase.channel('grin:notifications:' + session.user.id)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grin_notifications', filter: 'user_id=eq.' + session.user.id }, async payload => {
-        if (payload.new.actor_id === session.user.id) return;
-        const updated = await loadNotifications();
-        const item = updated?.find(n => n.id === payload.new.id) || payload.new;
-        const isMutedConversation = Boolean(item.conversation_id && mutedChatIds.includes(item.conversation_id));
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'grin_notifications', filter: 'user_id=eq.' + session.user.id }, payload => {
+        const incoming = payload.new;
+        if (!incoming?.id || incoming.actor_id === session.user.id) return;
+        const isMutedConversation = Boolean(incoming.conversation_id && mutedChatIds.includes(incoming.conversation_id));
+        const item = { ...incoming, grin_profiles: null };
+        // Update the visible list immediately instead of re-fetching 50 notifications per event.
+        setNotifications(current => current.some(n => n.id === item.id) ? current : [item, ...current].slice(0, 50));
         if (toastEnabled && !isMutedConversation) setNotificationToast(item);
         if (!isMutedConversation && document.visibilityState === 'hidden' && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           try { new Notification('GRIN', { body: item.body || ('New ' + String(item.kind || 'activity').replaceAll('_',' ') + ' notification') }); } catch {}
         }
-        window.setTimeout(() => setNotificationToast(current => current?.id === item.id ? null : current), 5500);
+        if (toastTimer) window.clearTimeout(toastTimer);
+        toastTimer = window.setTimeout(() => setNotificationToast(current => current?.id === item.id ? null : current), 5500);
+        // Enrich the notification quietly so opening it can navigate to the actor's profile.
+        if (item.actor_id) {
+          supabase.from('grin_profiles').select('id,username,display_name,avatar_url').eq('id', item.actor_id).maybeSingle()
+            .then(({ data }) => {
+              if (!data) return;
+              const enriched = { ...item, grin_profiles: data };
+              setNotifications(current => current.map(n => n.id === item.id ? enriched : n));
+              setNotificationToast(current => current?.id === item.id ? enriched : current);
+            }).catch(() => {});
+        }
       }).subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      if (toastTimer) window.clearTimeout(toastTimer);
+      supabase.removeChannel(channel);
+    };
   }, [session, toastEnabled, mutedChatIds]);
 
   async function markNotificationsRead() { await supabase.from('grin_notifications').update({read_at:new Date().toISOString()}).eq('user_id',session.user.id).is('read_at',null); setNotifications(x=>x.map(n=>({...n,read_at:n.read_at||new Date().toISOString()}))); }
@@ -659,9 +677,12 @@ export default function App() {
   }
 
   async function loadPosts() {
-    const { data: follows, error: followError } = await supabase.from('grin_follows').select('following_id').eq('follower_id',session.user.id);
+    // These two independent reads run together to shorten the first-feed wait.
+    const [{ data: follows }, { data, error: postError }] = await Promise.all([
+      supabase.from('grin_follows').select('following_id').eq('follower_id',session.user.id),
+      supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').order('created_at',{ascending:false}).limit(50)
+    ]);
     const nextFollowed=new Set((follows||[]).map(x=>x.following_id)); setFollowedIds(nextFollowed);
-    const { data, error: postError } = await supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').order('created_at',{ascending:false}).limit(50);
     if(postError){ console.error('GRIN feed load failed',postError); setPosts([]); setPostNotice('Could not load the GRIN feed. Please refresh.'); return; }
     setPosts(data || []);
     const [{data:people},{data:creatorRows},{data:businessRows},{data:allFollows}]=await Promise.all([
