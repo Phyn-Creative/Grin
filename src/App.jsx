@@ -25,6 +25,7 @@ export default function App() {
   const [gameBoard, setGameBoard] = useState(Array(9).fill(''));
   const [gameTurn, setGameTurn] = useState('X');
   const [gameRoomCode, setGameRoomCode] = useState('');
+  const [gameJoinCode, setGameJoinCode] = useState('');
   const [gameMark, setGameMark] = useState('X');
   const [gameNotice, setGameNotice] = useState('');
   const [gameInviteTarget, setGameInviteTarget] = useState('');
@@ -532,7 +533,7 @@ export default function App() {
     setGameNotice('Room created. Send the invitation link to play online.');
   }
   function joinGrinGameRoom(){
-    const code=gameRoomCode.trim().toUpperCase();
+    const code=gameJoinCode.trim().toUpperCase();
     if(!/^[A-Z0-9]{6,12}$/.test(code)){setGameNotice('Enter a valid room code.');return;}
     setGameRoomCode(code);setGameMark('O');setGameNotice('Joining room…');
   }
@@ -1475,7 +1476,7 @@ export default function App() {
     <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
     <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
     <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Reset board</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
-    <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameRoomCode} onChange={e=>setGameRoomCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
+    <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
   </section>
   <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Send the room link to a friend or post it in a community you belong to.</p>
     <label>Invite through a conversation</label><select value={gameInviteTarget} onChange={e=>{setGameInviteTarget(e.target.value);if(e.target.value)setGameInviteCommunity('');}}><option value="">Choose a chat or group…</option>{chats.filter(chat=>chat.id!=='welcome').map(chat=><option key={chat.id} value={chat.id}>{chat.name}</option>)}</select>
