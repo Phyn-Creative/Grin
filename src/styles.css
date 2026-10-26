@@ -2529,3 +2529,16 @@ button:active { transform: translateY(1px); }
     border-radius:15px;
   }
 }
+
+
+/* Keep Home focused on sharing and reading first; discovery stays secondary. */
+.feed-page{display:flex;flex-direction:column}
+.feed-page>.feed-head{order:1}
+.feed-page>.feed-tabs{order:2}
+.feed-page>.post-composer{order:3}
+.feed-page>.post-card{order:4}
+.feed-page>.explore-search{order:5}
+.feed-page>.search-feedback{order:6}
+.feed-page>.suggestions-card{order:7}
+.feed-page>.explore-results{order:8}
+@media(max-width:640px){.feed-page>.suggestions-card{margin-top:14px}}
