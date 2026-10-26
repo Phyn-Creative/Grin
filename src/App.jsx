@@ -382,7 +382,7 @@ export default function App() {
       setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); return;
     }
     setConnectFourThinking(true);
-    setConnectFourNotice('GRIN Bot is thinking…');
+    setConnectFourNotice('🤔 GRIN Bot is thinking…');
     window.setTimeout(() => {
       const legal = Array.from({length:7},(_,col)=>col).filter(col=>human.board[col] === '');
       const findWinningColumn = (board, mark) => legal.find(col => { const move=connectFourDrop(board,col,mark); return move.index >= 0 && connectFourWinner(move.board,mark); });
@@ -398,7 +398,7 @@ export default function App() {
       if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
       else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
       else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
-    }, 1250);
+    }, 2800);
   }
 
   function createOnlinePenaltyRoom() {
@@ -2405,7 +2405,7 @@ export default function App() {
         {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourThinking||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
         {connectFourBoard.map((cell,index)=><div key={index} className={'connect-four-cell'+(cell?' '+(cell==='R'?'disc-red':'disc-yellow'):'')} role="img" aria-label={cell==='R'?'Red disc':cell==='Y'?'Yellow disc':'Empty space'} />)}
       </div></div>
-      <p className="connect-four-status" aria-live="polite">{connectFourNotice}</p>
+      <p className={'connect-four-status'+(connectFourThinking?' is-thinking':'')} aria-live="polite">{connectFourNotice}{connectFourThinking && <span className="connect-four-thinking-dots" aria-hidden="true"><i/><i/><i/></span>}</p>
       <div className="card-actions"><button type="button" className="primary" onClick={resetConnectFour}>↻ New round</button></div>
     </> : selectedGrinGame === '2048' ? <>
       <section className="number2048-hero"><div><span className="number2048-kicker"><i/> GRIN ARCADE · PUZZLE MODE</span><h2>2048 <em>Merge Lab</em></h2><p>Think ahead. Chain your merges. Chase the golden tile.</p></div><div className="number2048-hero-art" aria-hidden="true"><span>2</span><span>4</span><span>8</span></div></section>
