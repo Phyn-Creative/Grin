@@ -130,6 +130,21 @@ export default function App() {
   const [penaltyNotice, setPenaltyNotice] = useState('Pick a direction to take your first penalty.');
   const [penaltyAnimation, setPenaltyAnimation] = useState('idle');
   const [penaltyLastResult, setPenaltyLastResult] = useState('');
+  const [penaltyAim, setPenaltyAim] = useState('center');
+  const [penaltyPower, setPenaltyPower] = useState(0);
+  const [penaltyCharging, setPenaltyCharging] = useState(false);
+  const penaltyChargeStartRef = useRef(0);
+  const penaltyPowerRef = useRef(0);
+  useEffect(() => {
+    if (!penaltyCharging) return;
+    const timer = window.setInterval(() => {
+      const power = Math.min(100, Math.round((performance.now() - penaltyChargeStartRef.current) / 13));
+      penaltyPowerRef.current = power;
+      setPenaltyPower(power);
+    }, 30);
+    return () => window.clearInterval(timer);
+  }, [penaltyCharging]);
+
 
 
 
@@ -346,20 +361,23 @@ export default function App() {
   function resetPenaltyShootout() {
     setPenaltyRound(1); setPenaltyPlayerGoals(0); setPenaltyBotGoals(0);
     setPenaltyPhase('shoot'); setPenaltyDone(false); setPenaltyAnimation('idle'); setPenaltyLastResult('');
-    setPenaltyNotice('Pick a direction to take your first penalty.');
+    setPenaltyAim('center'); setPenaltyPower(0); penaltyPowerRef.current=0; setPenaltyCharging(false);
+    setPenaltyNotice('Aim your shot, then hold R2 to build power.');
   }
-  function playPenaltyDirection(direction) {
+  function playPenaltyDirection(direction, power=70) {
     if (penaltyDone || penaltyAnimation !== 'idle') return;
     const directions = ['left','center','right'];
     if (penaltyPhase === 'shoot') {
       const keeper = directions[Math.floor(Math.random() * directions.length)];
-      const scored = keeper !== direction;
+      const powerFactor = Math.max(0, Math.min(100, power));
+      const keeperReads = Math.random() < (0.18 + powerFactor / 170);
+      const scored = keeper !== direction || !keeperReads;
       setPenaltyAnimation('shot-'+direction+(scored ? '-goal' : '-saved')+'-keeper-'+keeper);
       setPenaltyLastResult(scored ? 'GOAL!' : 'SAVED!');
       setPenaltyPlayerGoals(penaltyPlayerGoals + (scored ? 1 : 0));
       setPenaltyPhase('save');
       setPenaltyNotice(scored
-        ? 'GOAL! The keeper went '+keeper+'. Your turn to defend — choose where to dive.'
+        ? 'GOAL! '+powerFactor+'% power — the keeper went '+keeper+'. Your turn to defend — choose where to dive.'
         : 'SAVED! GRIN Bot read your '+direction+' shot. Your turn to defend.');
       setTimeout(() => setPenaltyAnimation('idle'), 950);
       return;
@@ -2182,17 +2200,27 @@ export default function App() {
       <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
       <Penalty3D animation={penaltyAnimation} result={penaltyLastResult} phase={penaltyPhase} />
       <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
-      <div className="penalty-control-heading">
-        <span className="penalty-control-dot" />
-        <strong>{penaltyPhase === 'shoot' ? 'CHOOSE YOUR SHOT' : 'READ THE STRIKER'}</strong>
-        <span className="penalty-control-tip">Tap a lane</span>
-      </div>
-      <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
-        {['left','center','right'].map((direction,index)=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
-          <span className="penalty-control-arrow">{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction === 'left' ? 'LEFT LANE' : direction === 'center' ? 'CENTRE' : 'RIGHT LANE'}</small><em>{['01','02','03'][index]}</em>
-        </button>)}
-      </div>
-      <p className="penalty-control-footnote">{penaltyAnimation !== 'idle' ? 'Play in progress…' : penaltyDone ? 'Shootout finished — run it back?' : penaltyPhase === 'shoot' ? 'Pick a corner. The keeper will try to read you.' : 'Guess the shot direction and get your gloves to it.'}</p>
+      {penaltyPhase === 'shoot' && !penaltyDone ? <>
+        <div className="penalty-console-label"><span>LEFT STICK</span><strong>AIM SHOT</strong><span className="penalty-console-status">{penaltyCharging ? 'CHARGING' : 'READY'}</span></div>
+        <div className="penalty-aim-pad" role="group" aria-label="Aim your penalty">
+          {['left','center','right'].map((direction)=><button key={direction} type="button" aria-pressed={penaltyAim===direction} className={'penalty-aim-lane '+(penaltyAim===direction?'is-aimed':'')} onClick={()=>setPenaltyAim(direction)} disabled={penaltyAnimation!=='idle'}>
+            <span>{direction==='left'?'↖':direction==='center'?'↑':'↗'}</span><small>{direction==='left'?'LEFT':direction==='center'?'CENTRE':'RIGHT'}</small>
+          </button>)}
+        </div>
+        <div className="penalty-power-row"><div className="penalty-power-copy"><strong>SHOT POWER</strong><span>{penaltyPower}%</span></div><div className="penalty-power-meter"><i style={{width:penaltyPower+'%'}} /></div></div>
+        <button type="button" className={'penalty-r2-trigger '+(penaltyCharging?'is-charging':'')} disabled={penaltyDone||penaltyAnimation!=='idle'} onPointerDown={event=>{event.preventDefault();if(penaltyDone||penaltyAnimation!=='idle')return;penaltyChargeStartRef.current=performance.now();penaltyPowerRef.current=0;setPenaltyPower(0);setPenaltyCharging(true);}} onPointerUp={event=>{event.preventDefault();if(!penaltyCharging)return;const power=Math.max(18,Math.min(100,Math.round((performance.now()-penaltyChargeStartRef.current)/13)));penaltyPowerRef.current=power;setPenaltyPower(power);setPenaltyCharging(false);playPenaltyDirection(penaltyAim,power);setTimeout(()=>{setPenaltyPower(0);penaltyPowerRef.current=0;},1150);}} onPointerCancel={()=>setPenaltyCharging(false)} onContextMenu={event=>event.preventDefault()} aria-label="Hold R2 to charge and release to shoot">
+          <span className="penalty-r2-pill">R2</span><span className="penalty-r2-label">{penaltyCharging?'RELEASE TO SHOOT':'HOLD TO SHOOT'}</span><span className="penalty-r2-sub">{penaltyCharging?'BUILDING POWER':'PRESS & HOLD'}</span>
+        </button>
+        <p className="penalty-control-footnote">Choose a lane, hold R2, then release. More power makes the shot harder to stop.</p>
+      </> : <div className="penalty-console-defense">
+        <div className="penalty-console-label"><span>LEFT STICK</span><strong>CHOOSE YOUR DIVE</strong><span className="penalty-console-status">KEEPER</span></div>
+        <div className="penalty-directions penalty-dive-pad" role="group" aria-label="Choose where to dive">
+          {['left','center','right'].map((direction)=><button key={direction} type="button" className="penalty-action-btn dive-action" onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone||penaltyAnimation!=='idle'}>
+            <span className="penalty-control-arrow">{direction==='left'?'↙':direction==='center'?'↑':'↘'}</span><strong>DIVE</strong><small>{direction==='left'?'LEFT':direction==='center'?'CENTRE':'RIGHT'}</small>
+          </button>)}
+        </div>
+        <p className="penalty-control-footnote">{penaltyDone?'Shootout complete. Run it back?':'Read the striker and choose your dive.'}</p>
+      </div>}
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
     </> : selectedGrinGame === 'connect4' ? <>
       <div className="feed-head"><div><h2>Connect Four</h2><p>Drop four discs in a row horizontally, vertically, or diagonally against GRIN Bot.</p></div><Trophy size={25}/></div>
