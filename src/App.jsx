@@ -90,7 +90,7 @@ export default function App() {
         if(player.dead||rival.dead){
           setSnakeRunning(false);
           const notice=player.dead&&rival.dead?'Draw! Both snakes crashed.':player.dead?'Arena over — your opponent wins!':'Arena over — you win!';
-          snakeNoticeRef.current=notice;setSnakeNotice(notice);
+          setSnakeNotice(notice);
           snakeChannelRef.current?.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,hostBody:player.body,guestBody:rival.body,hostDirection:direction,guestDirection:rivalDirection,hostScore:playerScore,guestScore:rivalScore,food,running:false,score:playerScore,notice}});
           return;
         }
@@ -145,26 +145,29 @@ export default function App() {
   }
 
   function startGrinSnake() {
-    const body = [34, 33, 32];
+    const body = snakeRoomRole==='guest'?[141,142,143]:[34,33,32];
+    const rivalBody = snakeRoomCode?(snakeRoomRole==='guest'?[34,33,32]:[141,142,143]):[141,142,143];
     let food = Math.floor(Math.random() * 192);
-    while (body.includes(food)) food = Math.floor(Math.random() * 192);
-    snakeBodyRef.current = body;
-    snakeFoodRef.current = food;
-    snakeDirectionRef.current = 'right';
-    snakeScoreRef.current = 0;
-    setSnakeBody(body); setSnakeFood(food); setSnakeDirection('right');
-    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice(snakeRoomCode ? 'Arena started! Host controls the game clock.' : 'Swipe on the board to steer, or use arrow keys / WASD on desktop.');
-    if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body,food,direction:'right',running:true,score:0,notice:'Arena started!'} });
+    while ([...body,...rivalBody].includes(food)) food = Math.floor(Math.random() * 192);
+    snakeBodyRef.current=body;snakeOpponentBodyRef.current=rivalBody;snakeFoodRef.current=food;
+    snakeDirectionRef.current=snakeRoomRole==='guest'?'left':'right';snakeOpponentDirectionRef.current=snakeRoomRole==='guest'?'right':'left';
+    snakeScoreRef.current=0;snakeOpponentScoreRef.current=0;
+    setSnakeBody(body);setSnakeOpponentBody(rivalBody);setSnakeFood(food);setSnakeDirection(snakeDirectionRef.current);setSnakeOpponentDirection(snakeOpponentDirectionRef.current);
+    setSnakeScore(0);setSnakeOpponentScore(0);setSnakeRunning(true);setSnakeNotice(snakeRoomCode?'Arena started! Each player controls their own snake.':'Swipe on the board to steer, or use arrow keys / WASD on desktop.');
+    if(snakeRoomCode&&snakeRoomRole==='host'&&snakeChannelRef.current)snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,hostBody:body,guestBody:rivalBody,hostDirection:'right',guestDirection:'left',hostScore:0,guestScore:0,food,running:true,score:0,notice:'Arena started! Each player controls their own snake.'}});
   }
   function steerGrinSnake(next) {
-    if (snakeRoomCode && snakeRoomRole === 'guest') {
-      if (snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-direction',payload:{room:snakeRoomCode,direction:next}});
+    const opposite={up:'down',down:'up',left:'right',right:'left'};
+    if(snakeRoomCode&&snakeRoomRole==='guest'){
+      if(next!==opposite[snakeOpponentDirectionRef.current]){
+        snakeOpponentDirectionRef.current=next;setSnakeOpponentDirection(next);
+        snakeChannelRef.current?.send({type:'broadcast',event:'snake-direction',payload:{room:snakeRoomCode,player:'guest',direction:next}});
+      }
       return;
     }
-    const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' };
-    if (next !== opposite[snakeDirectionRef.current]) {
-      snakeDirectionRef.current = next;
-      setSnakeDirection(next);
+    if(next!==opposite[snakeDirectionRef.current]){
+      snakeDirectionRef.current=next;setSnakeDirection(next);
+      if(snakeRoomCode)snakeChannelRef.current?.send({type:'broadcast',event:'snake-direction',payload:{room:snakeRoomCode,player:'host',direction:next}});
     }
   }
 
@@ -199,47 +202,40 @@ export default function App() {
     catch { window.prompt('Copy your Snake Arena link:',link); }
   }
   useEffect(() => {
-    if (!snakeRoomCode || !session?.user?.id || selectedGrinGame !== 'snake') return;
-    const room = snakeRoomCode;
-    const channel = supabase.channel('grin-snake-' + room,{config:{broadcast:{self:false}}});
-    snakeChannelRef.current = channel;
-    channel.on('broadcast',{event:'snake-state'},({payload}) => {
-      if (payload?.room !== room || !Array.isArray(payload.body)) return;
-      if (snakeRoomRole === 'guest') {
-        snakeBodyRef.current = payload.body; snakeFoodRef.current = payload.food;
-        snakeDirectionRef.current = payload.direction || 'right'; snakeScoreRef.current = payload.score || 0;
-        setSnakeBody(payload.body); setSnakeFood(payload.food); setSnakeDirection(payload.direction || 'right');
-        setSnakeScore(payload.score || 0); setSnakeRunning(!!payload.running);
-        setSnakeNotice(payload.notice || 'Snake Arena is live.');
+    if(!snakeRoomCode||!session?.user?.id||selectedGrinGame!=='snake')return;
+    const room=snakeRoomCode;
+    const channel=supabase.channel('grin-snake-'+room,{config:{broadcast:{self:false}}});
+    snakeChannelRef.current=channel;
+    channel.on('broadcast',{event:'snake-state'},({payload})=>{
+      if(payload?.room!==room)return;
+      if(snakeRoomRole==='guest'&&Array.isArray(payload.hostBody)&&Array.isArray(payload.guestBody)){
+        snakeBodyRef.current=payload.guestBody;snakeOpponentBodyRef.current=payload.hostBody;snakeFoodRef.current=payload.food;
+        snakeDirectionRef.current=payload.guestDirection||'left';snakeOpponentDirectionRef.current=payload.hostDirection||'right';
+        snakeScoreRef.current=payload.guestScore||0;snakeOpponentScoreRef.current=payload.hostScore||0;
+        setSnakeBody(payload.guestBody);setSnakeOpponentBody(payload.hostBody);setSnakeFood(payload.food);
+        setSnakeDirection(payload.guestDirection||'left');setSnakeOpponentDirection(payload.hostDirection||'right');
+        setSnakeScore(payload.guestScore||0);setSnakeOpponentScore(payload.hostScore||0);setSnakeRunning(!!payload.running);setSnakeNotice(payload.notice||'Snake Arena is live.');
+      }else if(snakeRoomRole==='host'&&Array.isArray(payload.guestBody)){
+        snakeOpponentBodyRef.current=payload.guestBody;snakeOpponentDirectionRef.current=payload.guestDirection||'left';snakeOpponentScoreRef.current=payload.guestScore||0;
+        setSnakeOpponentBody(payload.guestBody);setSnakeOpponentDirection(payload.guestDirection||'left');setSnakeOpponentScore(payload.guestScore||0);
       }
-    }).on('broadcast',{event:'snake-direction'},({payload}) => {
-      if (snakeRoomRole === 'host' && payload?.room === room && ['up','down','left','right'].includes(payload.direction)) {
-        const opposite = {up:'down',down:'up',left:'right',right:'left'};
-        if (payload.direction !== opposite[snakeDirectionRef.current]) {
-          snakeDirectionRef.current = payload.direction; setSnakeDirection(payload.direction);
-        }
+    }).on('broadcast',{event:'snake-direction'},({payload})=>{
+      if(payload?.room!==room||!['up','down','left','right'].includes(payload.direction))return;
+      const key=payload.player==='guest'?'guest':'host';
+      if(snakeRoomRole==='host'&&key==='guest'){
+        const opposite={up:'down',down:'up',left:'right',right:'left'};
+        if(payload.direction!==opposite[snakeOpponentDirectionRef.current]){snakeOpponentDirectionRef.current=payload.direction;setSnakeOpponentDirection(payload.direction);}
+      }else if(snakeRoomRole==='guest'&&key==='host'){
+        const opposite={up:'down',down:'up',left:'right',right:'left'};
+        if(payload.direction!==opposite[snakeOpponentDirectionRef.current]){snakeOpponentDirectionRef.current=payload.direction;setSnakeOpponentDirection(payload.direction);}
       }
-    }).on('broadcast',{event:'snake-request-state'},() => {
-      if (snakeRoomRole === 'host') channel.send({type:'broadcast',event:'snake-state',payload:{room,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:snakeRunning,score:snakeScoreRef.current,notice:'Connected to Snake Arena.'}});
-    }).subscribe(status => {
-      if (status === 'SUBSCRIBED') {
-        setSnakeNotice(snakeRoomRole === 'host' ? 'Room ready. Share the link and start the arena.' : 'Connected. Waiting for the host to start the arena.');
-        if (snakeRoomRole === 'guest') channel.send({type:'broadcast',event:'snake-request-state',payload:{room}});
-        else channel.send({type:'broadcast',event:'snake-state',payload:{room,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:snakeRunning,score:snakeScoreRef.current,notice:'Room ready.'}});
-      }
+    }).on('broadcast',{event:'snake-request-state'},()=>{
+      if(snakeRoomRole==='host')channel.send({type:'broadcast',event:'snake-state',payload:{room,hostBody:snakeBodyRef.current,guestBody:snakeOpponentBodyRef.current,hostDirection:snakeDirectionRef.current,guestDirection:snakeOpponentDirectionRef.current,hostScore:snakeScoreRef.current,guestScore:snakeOpponentScoreRef.current,food:snakeFoodRef.current,running:snakeRunning,score:snakeScoreRef.current,notice:'Arena ready. Both players control their own snake.'}});
+    }).subscribe(status=>{
+      if(status==='SUBSCRIBED')channel.send({type:'broadcast',event:'snake-request-state',payload:{room}});
     });
-    return () => { supabase.removeChannel(channel); if (snakeChannelRef.current === channel) snakeChannelRef.current = null; };
-  },[snakeRoomCode, snakeRoomRole, session?.user?.id, selectedGrinGame]);
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('game') === 'snake' && params.get('room')) {
-      const code = (params.get('room') || '').toUpperCase();
-      if (/^[A-Z0-9]{6,12}$/.test(code)) {
-        setSnakeRoomCode(code); setSnakeRoomRole('guest'); setSelectedGrinGame('snake'); setActive('games');
-        setSnakeNotice('You have been invited to Snake Arena. Connecting…');
-      }
-    }
-  },[]);
+    return()=>{if(snakeChannelRef.current===channel)snakeChannelRef.current=null;supabase.removeChannel(channel);};
+  },[snakeRoomCode,session?.user?.id,selectedGrinGame,snakeRoomRole]);
 
   function startMemoryGame() {
     setMemoryCards(['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5));
