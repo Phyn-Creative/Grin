@@ -615,6 +615,20 @@ export default function App() {
 
 
   function resetGrinGame(){const board=Array(9).fill('');setGameBoard(board);setGameTurn('X');setGameNotice('');if(gameRoomCode&&gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:'X',winner:null,room:gameRoomCode}});}
+  function exitGrinGameRoom(){
+    if(!gameRoomCode){setGameNotice('You are not in an online room.');return;}
+    setGameRoomCode('');
+    setGameMark('X');
+    setGameJoinCode('');
+    const board=Array(9).fill('');
+    setGameBoard(board);
+    setGameTurn('X');
+    setGameNotice('You left the room. You can play against GRIN Bot or join another room.');
+    const params=new URLSearchParams(window.location.search);
+    params.delete('game');params.delete('room');
+    const query=params.toString();
+    window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
+  }
   function grinGameWinner(board){
     const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     for(const [a,b,d] of lines)if(board[a]&&board[a]===board[b]&&board[a]===board[d])return board[a];
@@ -1625,7 +1639,7 @@ export default function App() {
       <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
       <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
       <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
-      <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
+      <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button>{gameRoomCode&&<button type="button" className="secondary-btn" onClick={exitGrinGameRoom}>Exit room</button>}</div>
       <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
     </> : <>
       <div className="feed-head"><div><h2>Snake</h2><p>Eat the glowing fruit, grow longer, and avoid the walls and your own tail.</p></div><Trophy size={25}/></div>
