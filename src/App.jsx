@@ -32,6 +32,11 @@ export default function App() {
   const [gameInviteTarget, setGameInviteTarget] = useState('');
   const [gameInviteCommunity, setGameInviteCommunity] = useState('');
   const [selectedGrinGame, setSelectedGrinGame] = useState('ttt');
+  const [numberTiles, setNumberTiles] = useState(() => create2048Board());
+  const [numberScore, setNumberScore] = useState(0);
+  const [numberBest, setNumberBest] = useState(0);
+  const [numberNotice, setNumberNotice] = useState('Combine matching tiles to reach 2048.');
+
   const [snakeBody, setSnakeBody] = useState([34, 33, 32]);
   const [snakeFood, setSnakeFood] = useState(105);
   const [snakeDirection, setSnakeDirection] = useState('right');
@@ -191,6 +196,42 @@ export default function App() {
     }
   }
 
+
+  function create2048Board(){
+    const board=Array(16).fill(0);
+    for(let n=0;n<2;n++){
+      const empty=board.map((v,i)=>v===0?i:-1).filter(i=>i>=0);
+      if(empty.length){const at=empty[Math.floor(Math.random()*empty.length)];board[at]=Math.random()<0.9?2:4;}
+    }
+    return board;
+  }
+  function reset2048(){setNumberTiles(create2048Board());setNumberScore(0);setNumberNotice('New game started. Combine matching tiles to reach 2048.');}
+  function move2048(direction){
+    const next=numberTiles.slice();let gained=0;let moved=false;
+    for(let line=0;line<4;line++){
+      const indexes=[];
+      for(let step=0;step<4;step++){
+        if(direction==='left')indexes.push(line*4+step);
+        else if(direction==='right')indexes.push(line*4+(3-step));
+        else if(direction==='up')indexes.push(step*4+line);
+        else indexes.push((3-step)*4+line);
+      }
+      const values=indexes.map(i=>next[i]).filter(v=>v!==0);const merged=[];
+      for(let i=0;i<values.length;i++){
+        if(values[i]===values[i+1]){merged.push(values[i]*2);gained+=values[i]*2;i++;}
+        else merged.push(values[i]);
+      }
+      while(merged.length<4)merged.push(0);
+      indexes.forEach((idx,pos)=>{if(next[idx]!==merged[pos])moved=true;next[idx]=merged[pos];});
+    }
+    if(!moved)return;
+    const empty=next.map((v,i)=>v===0?i:-1).filter(i=>i>=0);
+    if(empty.length){const at=empty[Math.floor(Math.random()*empty.length)];next[at]=Math.random()<0.9?2:4;}
+    const score=numberScore+gained;setNumberScore(score);setNumberBest(best=>Math.max(best,score));setNumberTiles(next);
+    if(next.includes(2048))setNumberNotice('2048! You did it! Keep going or start a new game.');
+    else if(!next.some(v=>v===0)&&!next.some((v,i)=>i%4<3&&v===next[i+1])&&!next.some((v,i)=>i<12&&v===next[i+4]))setNumberNotice('No moves left. Start a new game to try again.');
+    else setNumberNotice(gained?'+'+gained+' points. Keep going!':'Nice move — keep merging tiles.');
+  }
   function createSnakeRoom() {
     const code = crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
     setSnakeRoomCode(code); setSnakeRoomRole('host'); setSnakeJoinCode('');
@@ -1936,8 +1977,21 @@ export default function App() {
       <button type="button" className={selectedGrinGame === 'snake' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('snake')}>Snake</button>
       <button type="button" className={selectedGrinGame === 'memory' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('memory')}>Memory Match</button>
       <button type="button" className={selectedGrinGame === 'rps' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('rps')}>Rock Paper Scissors</button>
+      <button type="button" className={selectedGrinGame === '2048' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('2048')}>2048</button>
     </div>
-    {selectedGrinGame === 'ttt' ? <>
+    {selectedGrinGame === '2048' ? <>
+      <div className="feed-head"><div><h2>2048</h2><p>Slide the tiles, merge matching numbers, and reach 2048.</p></div><Trophy size={25}/></div>
+      <div className="number2048-scores"><span>Score <strong>{numberScore}</strong></span><span>Best this session <strong>{numberBest}</strong></span></div>
+      <div className="number2048-board" role="group" aria-label="2048 number puzzle" tabIndex={0} onKeyDown={e=>{const dirs={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};if(dirs[e.key]){e.preventDefault();move2048(dirs[e.key]);}}}>
+        {numberTiles.map((value,index)=><div key={index} className={'number2048-tile'+(value?' has-value tile-'+Math.min(value,2048):'')} aria-label={value?String(value):'Empty tile'}>{value||''}</div>)}
+      </div>
+      <div className="number2048-controls" role="group" aria-label="Move tiles">
+        <button type="button" className="secondary-btn" onClick={()=>move2048('up')} aria-label="Move up">↑</button>
+        <div><button type="button" className="secondary-btn" onClick={()=>move2048('left')} aria-label="Move left">←</button><button type="button" className="secondary-btn" onClick={()=>move2048('down')} aria-label="Move down">↓</button><button type="button" className="secondary-btn" onClick={()=>move2048('right')} aria-label="Move right">→</button></div>
+      </div>
+      <p className="game-turn-status" aria-live="polite">{numberNotice}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={reset2048}>New game</button></div>
+    </> : selectedGrinGame === 'ttt' ? <>
       <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
       {!gameRoomCode&&<div className="grin-bot-difficulty"><label htmlFor="grin-bot-level">GRIN Bot difficulty</label><select id="grin-bot-level" value={grinBotDifficulty} onChange={e=>setGrinBotDifficulty(e.target.value)}><option value="easy">Easy · Friendly</option><option value="normal">Normal · Fair challenge</option><option value="hard">Hard · Unbeatable strategy</option></select><small>{grinBotDifficulty==='easy'?'A relaxed game with plenty of room to win.':grinBotDifficulty==='normal'?'A fair challenge with occasional imperfect moves.':'The strongest strategy — prepare for a tough match!'}</small></div>}
       <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
