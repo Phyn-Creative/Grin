@@ -60,6 +60,7 @@ export default function App() {
   const [memoryScores,setMemoryScores]=useState({host:0,guest:0});
   const memoryChannelRef=useRef(null);
   const memoryPendingMismatchRef=useRef(false);
+  const memoryStateRef=useRef({});
   const [rpsChoice, setRpsChoice] = useState('');
   const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
   const [rpsScore, setRpsScore] = useState({wins:0,draws:0,losses:0});
@@ -86,6 +87,7 @@ export default function App() {
   snakeOpponentBodyRef.current = snakeOpponentBody;
   snakeOpponentDirectionRef.current = snakeOpponentDirection;
   snakeOpponentScoreRef.current = snakeOpponentScore;
+  memoryStateRef.current={cards:memoryCards,flipped:memoryFlipped,matched:memoryMatched,moves:memoryMoves,scores:memoryScores,turn:memoryTurn,notice:memoryNotice};
   useEffect(() => {
     if (active !== 'games' || selectedGrinGame !== 'snake' || !snakeRunning || (snakeRoomCode && snakeRoomRole !== 'host')) return;
     const step = (body, direction, otherBody) => {
@@ -258,9 +260,9 @@ export default function App() {
     channel.on('broadcast',{event:'memory-state'},({payload})=>{
       if(payload?.room!==room||!Array.isArray(payload.cards)||!Array.isArray(payload.flipped)||!Array.isArray(payload.matched))return;
       setMemoryCards(payload.cards);setMemoryFlipped(payload.flipped);setMemoryMatched(payload.matched);setMemoryMoves(payload.moves||0);setMemoryScores(payload.scores||{host:0,guest:0});setMemoryTurn(payload.turn||'host');setMemoryNotice(payload.notice||'Memory Match is live.');
-      if(snakeRoomRole==='host'&&payload.flipped.length===2&&payload.cards[payload.flipped[0]]?.emoji!==payload.cards[payload.flipped[1]]?.emoji)scheduleMemoryMismatchClear(payload);
+      if(memoryRoomRole==='host'&&payload.flipped.length===2&&payload.cards[payload.flipped[0]]?.emoji!==payload.cards[payload.flipped[1]]?.emoji)scheduleMemoryMismatchClear(payload);
     }).on('broadcast',{event:'memory-request-state'},()=>{
-      if(memoryRoomRole==='host')channel.send({type:'broadcast',event:'memory-state',payload:{room,cards:memoryCards,flipped:memoryFlipped,matched:memoryMatched,moves:memoryMoves,scores:memoryScores,turn:memoryTurn,notice:memoryNotice}});
+      if(memoryRoomRole==='host')channel.send({type:'broadcast',event:'memory-state',payload:{room,...memoryStateRef.current}});
     }).subscribe(status=>{if(status==='SUBSCRIBED')channel.send({type:'broadcast',event:'memory-request-state',payload:{room}});});
     return()=>{if(memoryChannelRef.current===channel)memoryChannelRef.current=null;supabase.removeChannel(channel);};
   },[memoryRoomCode,memoryRoomRole,session?.user?.id,selectedGrinGame]);
@@ -283,7 +285,10 @@ export default function App() {
     setRpsRoundResolved(true);
     setRpsResult('You chose '+own+' · Opponent chose '+other+'. '+(result==='draw'?'It’s a draw!':result==='win'?'You win this round!':'Your opponent wins this round.'));
     setRpsRoundWins(s=>({...s,you:s.you+(result==='win'?1:0),opponent:s.opponent+(result==='loss'?1:0)}));
-    const timer=window.setTimeout(()=>{setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsResult('Choose your next move.');},1400);
+    const nextWins={you:rpsRoundWins.you+(result==='win'?1:0),opponent:rpsRoundWins.opponent+(result==='loss'?1:0)};
+    const matchOver=nextWins.you>=3||nextWins.opponent>=3;
+    if(matchOver)setRpsResult(nextWins.you>=3?'You won the match! 🎉':'Your opponent won the match.');
+    const timer=window.setTimeout(()=>{if(!matchOver){setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsResult('Choose your next move.');}},1400);
     return()=>window.clearTimeout(timer);
   },[rpsRoomCode,rpsChoice,rpsOpponentChoice,rpsRoundResolved]);
 
@@ -1941,7 +1946,7 @@ export default function App() {
     </> : <>
       <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>{rpsRoomCode?'Online match · Room '+rpsRoomCode+' · '+(rpsRoomRole==='host'?'Host':'Challenger'):'Play quick rounds against GRIN Bot or challenge a friend.'}</p></div><Trophy size={25}/></div>
       {rpsRoomCode?<div className="profile-form"><p>Room code: <strong>{rpsRoomCode}</strong></p><div className="card-actions"><button type="button" className="secondary-btn" onClick={copyRpsRoomLink}>Copy match link</button><button type="button" className="secondary-btn" onClick={exitRpsRoom}>Exit room</button></div><p>Best of five: first to three wins takes the match.</p></div>:<div className="profile-form"><button type="button" className="primary" onClick={createRpsRoom}>Create online match</button><form onSubmit={e=>{e.preventDefault();joinRpsRoom();}}><label>Join a match</label><input value={rpsJoinCode} onChange={e=>setRpsJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>}
-      <div className="rps-choices">{[{id:'rock',emoji:'✊',label:'Rock'},{id:'paper',emoji:'✋',label:'Paper'},{id:'scissors',emoji:'✌️',label:'Scissors'}].map(item=><button type="button" key={item.id} disabled={!!rpsRoomCode&&(!!rpsChoice||rpsRoundResolved)} className={'rps-choice'+(rpsChoice===item.id?' selected':'')} onClick={()=>playRockPaperScissors(item.id)}><span>{item.emoji}</span><strong>{item.label}</strong></button>)}</div>
+      <div className="rps-choices">{[{id:'rock',emoji:'✊',label:'Rock'},{id:'paper',emoji:'✋',label:'Paper'},{id:'scissors',emoji:'✌️',label:'Scissors'}].map(item=><button type="button" key={item.id} disabled={!!rpsRoomCode&&(!!rpsChoice||rpsRoundResolved||rpsRoundWins.you>=3||rpsRoundWins.opponent>=3)} className={'rps-choice'+(rpsChoice===item.id?' selected':'')} onClick={()=>playRockPaperScissors(item.id)}><span>{item.emoji}</span><strong>{item.label}</strong></button>)}</div>
       <p className="game-turn-status" aria-live="polite">{rpsResult}</p>{rpsRoomCode?<div className="rps-score"><span>Your wins <strong>{rpsRoundWins.you}</strong></span><span>Opponent <strong>{rpsRoundWins.opponent}</strong></span></div>:<div className="rps-score"><span>Wins <strong>{rpsScore.wins}</strong></span><span>Draws <strong>{rpsScore.draws}</strong></span><span>Losses <strong>{rpsScore.losses}</strong></span></div>}
       <div className="card-actions"><button type="button" className="secondary-btn" onClick={()=>{resetRockPaperScissors();setRpsRoundWins({you:0,opponent:0});}}>Reset score</button></div>
     </>}
