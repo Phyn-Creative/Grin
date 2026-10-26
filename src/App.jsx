@@ -398,7 +398,7 @@ export default function App() {
       if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
       else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
       else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
-    }, 850);
+    }, 1250);
   }
 
   function createOnlinePenaltyRoom() {
