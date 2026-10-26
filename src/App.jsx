@@ -46,6 +46,8 @@ export default function App() {
   const [penaltyPhase, setPenaltyPhase] = useState('shoot');
   const [penaltyDone, setPenaltyDone] = useState(false);
   const [penaltyNotice, setPenaltyNotice] = useState('Pick a direction to take your first penalty.');
+  const [penaltyAnimation, setPenaltyAnimation] = useState('idle');
+  const [penaltyLastResult, setPenaltyLastResult] = useState('');
 
 
 
@@ -261,42 +263,46 @@ export default function App() {
 
   function resetPenaltyShootout() {
     setPenaltyRound(1); setPenaltyPlayerGoals(0); setPenaltyBotGoals(0);
-    setPenaltyPhase('shoot'); setPenaltyDone(false);
+    setPenaltyPhase('shoot'); setPenaltyDone(false); setPenaltyAnimation('idle'); setPenaltyLastResult('');
     setPenaltyNotice('Pick a direction to take your first penalty.');
   }
   function playPenaltyDirection(direction) {
-    if (penaltyDone) return;
+    if (penaltyDone || penaltyAnimation !== 'idle') return;
     const directions = ['left','center','right'];
     if (penaltyPhase === 'shoot') {
       const keeper = directions[Math.floor(Math.random() * directions.length)];
       const scored = keeper !== direction;
-      const goals = penaltyPlayerGoals + (scored ? 1 : 0);
-      setPenaltyPlayerGoals(goals);
+      setPenaltyAnimation('shot-'+direction+(scored ? '-goal' : '-saved'));
+      setPenaltyLastResult(scored ? 'GOAL!' : 'SAVED!');
+      setPenaltyPlayerGoals(penaltyPlayerGoals + (scored ? 1 : 0));
       setPenaltyPhase('save');
       setPenaltyNotice(scored
-        ? 'GOAL! You shot '+direction+' and beat GRIN Bot. Now defend — pick where to dive.'
-        : 'Saved! GRIN Bot guessed '+direction+'. Your turn to defend — pick where to dive.');
+        ? 'GOAL! The keeper went '+keeper+'. Your turn to defend — choose where to dive.'
+        : 'SAVED! GRIN Bot read your '+direction+' shot. Your turn to defend.');
+      setTimeout(() => setPenaltyAnimation('idle'), 950);
       return;
     }
     const shot = directions[Math.floor(Math.random() * directions.length)];
     const saved = shot === direction;
     const botGoals = penaltyBotGoals + (saved ? 0 : 1);
+    setPenaltyAnimation('keeper-'+direction+(saved ? '-save' : '-goal')+'-shot-'+shot);
+    setPenaltyLastResult(saved ? 'BIG SAVE!' : 'BOT SCORES');
     setPenaltyBotGoals(botGoals);
+    setTimeout(() => setPenaltyAnimation('idle'), 950);
     if (penaltyRound >= 5) {
       setPenaltyDone(true);
       setPenaltyPhase('shoot');
-      setPenaltyBotGoals(botGoals);
       setPenaltyNotice(penaltyPlayerGoals > botGoals
-        ? 'Full time — you win '+penaltyPlayerGoals+'–'+botGoals+'! 🏆'
+        ? 'FULL TIME — YOU WIN '+penaltyPlayerGoals+'–'+botGoals+'! 🏆'
         : penaltyPlayerGoals < botGoals
-          ? 'Full time — GRIN Bot wins '+penaltyPlayerGoals+'–'+botGoals+'. Rematch?'
-          : 'Full time — it’s a '+penaltyPlayerGoals+'–'+botGoals+' draw!');
+          ? 'FULL TIME — GRIN BOT WINS '+penaltyPlayerGoals+'–'+botGoals+'. Rematch?'
+          : 'FULL TIME — IT’S A '+penaltyPlayerGoals+'–'+botGoals+' DRAW!');
     } else {
       setPenaltyRound(penaltyRound + 1);
       setPenaltyPhase('shoot');
       setPenaltyNotice(saved
-        ? 'SAVE! GRIN Bot shot '+shot+' and you dived the right way. Round '+(penaltyRound+1)+' — take your penalty.'
-        : 'GRIN Bot scores, shooting '+shot+'. Round '+(penaltyRound+1)+' — take your penalty.');
+        ? 'WHAT A SAVE! GRIN Bot shot '+shot+'. Round '+(penaltyRound+1)+' — your next penalty.'
+        : 'GRIN Bot scores, shooting '+shot+'. Round '+(penaltyRound+1)+' — your next penalty.');
     }
   }
 
@@ -2092,11 +2098,22 @@ export default function App() {
         <div><span>GRIN Bot</span><strong>{penaltyBotGoals}</strong></div>
       </div>
       <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
-      <div className="penalty-goal" aria-hidden="true"><div className="penalty-net"><span>🥅</span></div><div className="penalty-ball">⚽</div></div>
+      <div className={'penalty-arena '+(penaltyAnimation !== 'idle' ? 'is-active '+penaltyAnimation : '')} aria-label="Animated penalty shootout">
+        <div className="penalty-stadium-lights"><i/><i/><i/><i/></div>
+        <div className="penalty-crowd" aria-hidden="true">● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ● ●</div>
+        <div className="penalty-pitch">
+          <div className="penalty-pitch-lines"/>
+          <div className="penalty-goal-frame"><div className="penalty-goal-net"/></div>
+          <div className="penalty-keeper" aria-label="GRIN Bot goalkeeper"><span className="keeper-head"/><span className="keeper-body"/><span className="keeper-arm keeper-arm-left"/><span className="keeper-arm keeper-arm-right"/><span className="keeper-leg keeper-leg-left"/><span className="keeper-leg keeper-leg-right"/></div>
+          <div className="penalty-ball" aria-label="Football">⚽</div>
+          <div className="penalty-shot-flash">{penaltyLastResult}</div>
+        </div>
+        <div className="penalty-arena-caption">{penaltyAnimation !== 'idle' ? (penaltyLastResult || 'PLAY!') : penaltyPhase === 'shoot' ? 'YOUR SHOT • PICK A CORNER' : 'DEFEND • CHOOSE YOUR DIVE'}</div>
+      </div>
       <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
       <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
-        {['left','center','right'].map(direction=><button key={direction} type="button" className="secondary-btn" onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone}>
-          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span>{penaltyPhase === 'shoot' ? 'Shoot '+direction : 'Dive '+direction}
+        {['left','center','right'].map(direction=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
+          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction.toUpperCase()}</small>
         </button>)}
       </div>
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
