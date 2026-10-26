@@ -525,7 +525,7 @@ export default function App() {
   }
 
 
-  function resetGrinGame(){setGameBoard(Array(9).fill(''));setGameTurn('X');setGameNotice('');}
+  function resetGrinGame(){const board=Array(9).fill('');setGameBoard(board);setGameTurn('X');setGameNotice('');if(gameRoomCode&&gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:'X',winner:null,room:gameRoomCode}});}
   function grinGameWinner(board){
     const lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     for(const [a,b,d] of lines)if(board[a]&&board[a]===board[b]&&board[a]===board[d])return board[a];
