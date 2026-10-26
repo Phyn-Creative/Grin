@@ -2600,3 +2600,9 @@ button:active { transform: translateY(1px); }
 [data-grin-theme="dark"] .memory-card.revealed,[data-grin-theme="dark"] .rps-choice{background:var(--surface,#1c2922);color:var(--text,#f0f4f1)}
 [data-grin-theme="dark"] .memory-card.matched,[data-grin-theme="dark"] .rps-choice.selected{background:#244a34}
 @media(max-width:420px){.memory-game-board{gap:7px}.memory-card{border-radius:10px}.rps-choice{min-height:100px;border-radius:12px}}
+
+
+.grin-bot-difficulty{display:grid;gap:7px;margin:14px 0 18px;padding:13px;border:1px solid var(--border-color,rgba(128,128,128,.25));border-radius:14px}
+.grin-bot-difficulty label{font-weight:650}
+.grin-bot-difficulty select{width:100%;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--border-color,rgba(128,128,128,.3));background:var(--card-bg,#fff);color:inherit;font:inherit}
+.grin-bot-difficulty small{line-height:1.45;opacity:.78}
