@@ -2609,5 +2609,4 @@ button:active { transform: translateY(1px); }
 
 
 .grin-memory-difficulty{margin:14px 0 18px}
-.memory-game-board:has(.memory-card:nth-child(14)){grid-template-columns:repeat(4,minmax(0,1fr))}
-.memory-game-board:has(.memory-card:nth-child(16)){grid-template-columns:repeat(4,minmax(0,1fr))}
+.memory-game-board:has(.memory-card:nth-child(20)),.memory-game-board:has(.memory-card:nth-child(32)){grid-template-columns:repeat(4,minmax(0,1fr))}
