@@ -34,9 +34,53 @@ export default function ExpansionGames() {
  const resetWord=()=>{let w=WORDS[Math.floor(Math.random()*WORDS.length)];if(w===word)w=WORDS[(WORDS.indexOf(w)+1)%WORDS.length];setWord(w);setGuess('');setGuesses([]);setNotice('Guess the five-letter word in six tries.');};
  const submitGuess=()=>{const g=guess.trim().toUpperCase();if(g.length!==5||!WORDS.includes(g)){setNotice('Enter a valid five-letter word from the word list.');return;}if(guesses.includes(g))return;const all=[...guesses,g];setGuesses(all);setGuess('');if(g===word){setNotice('Correct! +10 GRIN points.');earn(10,true)}else if(all.length>=6)setNotice('Round over — the word was '+word+'. Try again!');else setNotice('Good try. Green = right letter and place; gold = letter is in the word.');};
  const revealMine=(i)=>{if(mineOver||mineWon||mines[i].open||mines[i].flag)return;if(mines[i].bomb){setMines(m=>m.map(x=>({...x,open:x.bomb||x.open})));setMineOver(true);setNotice('Boom! Reset the board and try again.');return;}const next=mines.map((x,j)=>j===i?{...x,open:true}:x);setMines(next);if(next.filter(x=>!x.bomb&&!x.open).length===0){setMineWon(true);setNotice('Board cleared! +12 GRIN points.');earn(12,true)}};
- const chessTap=(i)=>{if(chessPick===null){if(chess[i].p&&chess[i].side===chessTurn){setChessPick(i);setChessMsg('Choose a destination square.');}return;}if(i===chessPick){setChessPick(null);return;}const piece=chess[chessPick];if(chess[i].side===piece.side){setChessPick(i);return;}const a=Math.floor(chessPick/8),b=chessPick%8,c=Math.floor(i/8),d=i%8,dr=c-a,dc=d-b;let legal=false;const p=piece.p; if(p==='♙'||p==='♟'){const dir=p==='♙'?-1:1;legal=dc===0&&dr===dir&&!chess[i].p||dc===0&&dr===2*dir&&!chess[i].p&&((p==='♙'&&a===6)||(p==='♟'&&a===1))&&!chess[chessPick+dir*8].p||Math.abs(dc)===1&&dr===dir&&!!chess[i].p;}else if('♖♜'.includes(p))legal=(dr===0||dc===0)&&clearPath(chess,chessPick,i);else if('♗♝'.includes(p))legal=Math.abs(dr)===Math.abs(dc)&&clearPath(chess,chessPick,i);else if('♕♛'.includes(p))legal=(dr===0||dc===0||Math.abs(dr)===Math.abs(dc))&&clearPath(chess,chessPick,i);else if('♘♞'.includes(p))legal=Math.abs(dr)*Math.abs(dc)===2;else if('♔♚'.includes(p))legal=Math.max(Math.abs(dr),Math.abs(dc))===1;
- if(!legal){setChessMsg('That move is not valid for this piece.');setChessPick(null);return;}const next=chess.map(x=>({...x}));next[i]={...piece};next[chessPick]={p:'',side:null};setChess(next);setChessTurn(chessTurn==='white'?'black':'white');setChessPick(null);setChessMsg((chessTurn==='white'?'Black':'White')+' to move · basic local chess.');if(chess[i].p==='♚'||chess[i].p==='♔')setChessMsg('King captured in this casual mode. Reset for a new game.');};
- const draughtTap=(i)=>{if(draughtPick===null){const p=draughts[i].p;if(p&&((draughtTurn==='white'&&p==='○')||(draughtTurn==='black'&&p==='●'))){setDraughtPick(i)}return;}if(i===draughtPick){setDraughtPick(null);return;}const r=Math.floor(draughtPick/8),c=draughtPick%8,nr=Math.floor(i/8),nc=i%8,dr=nr-r,dc=nc-c,p=draughts[draughtPick].p;if(!draughts[i].p&&Math.abs(dc)===1&&Math.abs(dr)===1&&(draughts[draughtPick].king||(p==='○'&&dr===-1)||(p==='●'&&dr===1))){const n=draughts.map(x=>({...x}));n[i]={...n[draughtPick]};n[draughtPick]={p:'',king:false};if((p==='○'&&nr===0)||(p==='●'&&nr===7))n[i].king=true;setDraughts(n);setDraughtTurn(draughtTurn==='white'?'black':'white');}else if(!draughts[i].p&&Math.abs(dc)===2&&Math.abs(dr)===2){const mid=Math.floor((r+nr)/2)*8+Math.floor((c+nc)/2);if(draughts[mid].p&&draughts[mid].p!==p){const n=draughts.map(x=>({...x}));n[i]={...n[draughtPick]};n[draughtPick]={p:'',king:false};n[mid]={p:'',king:false};if((p==='○'&&nr===0)||(p==='●'&&nr===7))n[i].king=true;setDraughts(n);setDraughtTurn(draughtTurn==='white'?'black':'white');}else setNotice('Try a diagonal move into an empty square.');}else setNotice('Choose a legal diagonal move.');setDraughtPick(null);};
+ const chessTap=(i)=>{
+  if(chessTurn!=='white')return;
+  if(chessPick===null){if(chess[i].p&&chess[i].side==='white'){setChessPick(i);setChessMsg('Your move. Choose a destination square.');}return;}
+  if(i===chessPick){setChessPick(null);return;}
+  const piece=chess[chessPick];
+  if(chess[i].side==='white'){setChessPick(i);return;}
+  const next=chess.map(x=>({...x}));
+  if(!isCasualChessMoveLegal(chess,chessPick,i)){setChessMsg('That move is not valid for this piece.');setChessPick(null);return;}
+  const captured=chess[i].p;
+  next[i]={...piece};next[chessPick]={p:'',side:null};
+  if(captured==='♚'){setChess(next);setChessPick(null);setChessMsg('You win! GRIN Bot’s king has been captured.');setChessTurn('white');return;}
+  const botMoves=getCasualChessMoves(next,'black');
+  if(!botMoves.length){setChess(next);setChessPick(null);setChessMsg('GRIN Bot has no available moves. You win this casual round!');return;}
+  const captures=botMoves.filter(m=>next[m.to].p);
+  const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+  const afterBot=next.map(x=>({...x}));
+  const botPiece=afterBot[chosen.from];const humanCaptured=afterBot[chosen.to].p;
+  afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
+  setChess(afterBot);setChessPick(null);setChessTurn('white');
+  setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
+ };
+ const draughtTap=(i)=>{
+  if(draughtTurn!=='white')return;
+  if(draughtPick===null){if(draughts[i].p==='○'){setDraughtPick(i)}return;}
+  if(i===draughtPick){setDraughtPick(null);return;}
+  const from=draughtPick,r=Math.floor(from/8),c=from%8,nr=Math.floor(i/8),nc=i%8,dr=nr-r,dc=nc-c,p=draughts[from].p;
+  let next=draughts.map(x=>({...x})),valid=false;
+  if(!draughts[i].p&&Math.abs(dc)===1&&Math.abs(dr)===1&&(draughts[from].king||dr===-1)){
+    next[i]={...next[from]};next[from]={p:'',king:false};valid=true;
+  }else if(!draughts[i].p&&Math.abs(dc)===2&&Math.abs(dr)===2){
+    const mid=Math.floor((r+nr)/2)*8+Math.floor((c+nc)/2);
+    if(draughts[mid].p==='●'&&(draughts[from].king||dr===-2)){
+      next[i]={...next[from]};next[from]={p:'',king:false};next[mid]={p:'',king:false};valid=true;
+    }
+  }
+  if(!valid){setNotice('Choose a legal diagonal move or jump over a bot piece.');setDraughtPick(null);return;}
+  if(nr===0)next[i].king=true;
+  const botMoves=getDraughtsMoves(next,'black');
+  if(!botMoves.length){setDraughts(next);setDraughtPick(null);setNotice('You win! GRIN Bot has no legal moves.');return;}
+  const captures=botMoves.filter(m=>m.capture);
+  const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+  next[chosen.to]={...next[chosen.from]};next[chosen.from]={p:'',king:false};
+  if(chosen.capture!==null)next[chosen.capture]={p:'',king:false};
+  if(Math.floor(chosen.to/8)===7)next[chosen.to].king=true;
+  setDraughts(next);setDraughtPick(null);setDraughtTurn('white');
+  setNotice(chosen.capture!==null?'GRIN Bot jumped a piece. Your turn.':'GRIN Bot moved. Your turn.');
+ };
  const menus=[['word','Word Guess','🔤'],['mines','Minesweeper','💣'],['chess','Chess','♟️'],['draughts','Dama / Draughts','⚫'],['quiz','GRIN Trivia','🧠'],['predict','Score Predictor','⚽'],['party','Truth or Dare','🎲'],['couples','Couples & compatibility','💞'],['rewards','Points & rankings','🏆'],['tournament','Tournaments','🥇']];
  const compatScore=useMemo(()=>Math.round(compat.reduce((a,b)=>a+b,0)/3),[compat]);
  return <div className="grin-expansion" style={{marginTop:18}}>
@@ -55,4 +99,17 @@ export default function ExpansionGames() {
   {mode==='rewards'&&<section style={panel}><h2>🏆 GRIN Arcade Rewards</h2><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10}}>{[['Points',profile.points],['Wins',profile.wins],['Streak',profile.streak+' days'],['Badges',(profile.badges||[]).length]].map(([k,v])=><div key={k} style={{...panel,margin:0,textAlign:'center'}}><small>{k}</small><h2 style={{margin:'6px 0'}}>{v}</h2></div>)}</div><h3>Badges</h3>{profile.badges?.length?profile.badges.map(b=><span key={b} style={{display:'inline-block',padding:'7px 10px',borderRadius:20,background:'#f2e7bd',color:'#463a10',margin:4}}>🏅 {b}</span>):<p>Play games to unlock Rising Star (25 points) and Game Changer (5 wins).</p>}<h3>Local arcade rankings</h3><p>Your profile is saved on this device. Friend leaderboards, shared tournaments and synced points need a shared database and server-side score validation before they can be honestly shown as live.</p><button style={btn} onClick={()=>{if(confirm('Reset your local GRIN Arcade points and badges?')){const fresh={points:0,wins:0,streak:0,lastDay:'',badges:[]};setProfile(fresh);localStorage.setItem('grin-arcade-profile',JSON.stringify(fresh));}}}>Reset local profile</button></section>}
  </div>;
 }
+function isCasualChessMoveLegal(board,from,to){
+ const piece=board[from],target=board[to];if(!piece?.p||target.side===piece.side||from===to)return false;
+ const a=Math.floor(from/8),b=from%8,c=Math.floor(to/8),d=to%8,dr=c-a,dc=d-b,p=piece.p;
+ if(p==='♙'||p==='♟'){const dir=p==='♙'?-1:1;return (dc===0&&dr===dir&&!target.p)||(dc===0&&dr===2*dir&&!target.p&&((p==='♙'&&a===6)||(p==='♟'&&a===1))&&!board[from+dir*8].p)||(Math.abs(dc)===1&&dr===dir&&!!target.p);}
+ if('♖♜'.includes(p))return (dr===0||dc===0)&&clearPath(board,from,to);
+ if('♗♝'.includes(p))return Math.abs(dr)===Math.abs(dc)&&clearPath(board,from,to);
+ if('♕♛'.includes(p))return (dr===0||dc===0||Math.abs(dr)===Math.abs(dc))&&clearPath(board,from,to);
+ if('♘♞'.includes(p))return Math.abs(dr)*Math.abs(dc)===2;
+ if('♔♚'.includes(p))return Math.max(Math.abs(dr),Math.abs(dc))===1;
+ return false;
+}
+function getCasualChessMoves(board,side){const moves=[];for(let from=0;from<64;from++){if(board[from].side!==side||!board[from].p)continue;for(let to=0;to<64;to++){if(isCasualChessMoveLegal(board,from,to))moves.push({from,to});}}return moves;}
+function getDraughtsMoves(board,side){const moves=[];for(let from=0;from<64;from++){const piece=board[from];if(!piece.p||((side==='black')!==(piece.p==='●')))continue;const r=Math.floor(from/8),c=from%8,dirs=piece.king?[-1,1]:[side==='black'?1:-1];for(const dr of dirs)for(const dc of [-1,1]){const nr=r+dr,nc=c+dc;if(nr<0||nr>7||nc<0||nc>7)continue;const to=nr*8+nc;if(!board[to].p)moves.push({from,to,capture:null});else if(board[to].p!==(piece.p)){const jr=nr+dr,jc=nc+dc;if(jr>=0&&jr<8&&jc>=0&&jc<8&&!board[jr*8+jc].p)moves.push({from,to:jr*8+jc,capture:to});}}}return moves;}
 function clearPath(board,from,to){const a=Math.floor(from/8),b=from%8,c=Math.floor(to/8),d=to%8,dr=Math.sign(c-a),dc=Math.sign(d-b);let r=a+dr,col=b+dc;while(r!==c||col!==d){if(board[r*8+col]?.p)return false;r+=dr;col+=dc;}return true;}
