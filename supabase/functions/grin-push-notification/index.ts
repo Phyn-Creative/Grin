@@ -11,44 +11,11 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
 
-  const expectedSecret = Deno.env.get("GRIN_PUSH_WEBHOOK_SECRET");
-  const suppliedSecret = req.headers.get("x-grin-webhook-secret");
-  if (!expectedSecret || !suppliedSecret || suppliedSecret !== expectedSecret) {
-    return new Response(JSON.stringify({ error: "Unauthorized webhook" }), {
-      status: expectedSecret ? 401 : 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const publicKey = Deno.env.get("VAPID_PUBLIC_KEY");
-  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
-  const subject = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@grin.social";
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!publicKey || !privateKey || !supabaseUrl || !serviceRoleKey) {
-    return new Response(JSON.stringify({ error: "Push sender secrets are not configured" }), {
-      status: 503,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  let event: any;
-  try {
-    event = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Supabase Database Webhooks send the inserted row in event.record.
-  const row = event?.record;
-  const userId = row?.user_id;
-  if (event?.type !== "INSERT" || event?.table !== "grin_notifications" || !userId) {
-    return new Response(JSON.stringify({ skipped: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!supabaseUrl || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: "Supabase server credentials are unavailable" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
@@ -56,18 +23,51 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  const suppliedSecret = req.headers.get("x-grin-webhook-secret");
+  const { data: expectedSecret, error: secretError } = await supabase.rpc("get_grin_push_webhook_secret");
+  if (secretError || !expectedSecret || !suppliedSecret || suppliedSecret !== expectedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized webhook" }), {
+      status: secretError ? 503 : 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { data: vapidConfig, error: vapidError } = await supabase.rpc("get_grin_vapid_config");
+  const publicKey = vapidConfig?.public_key;
+  const privateKey = vapidConfig?.private_key;
+  const subject = vapidConfig?.subject;
+  if (vapidError || !publicKey || !privateKey || !subject) {
+    console.error("GRIN VAPID configuration unavailable:", vapidError);
+    return new Response(JSON.stringify({ error: "VAPID push keys are not configured in Vault" }), {
+      status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let event: any;
+  try { event = await req.json(); } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const row = event?.record;
+  const userId = row?.user_id;
+  if (event?.type !== "INSERT" || event?.table !== "grin_notifications" || !userId) {
+    return new Response(JSON.stringify({ skipped: true }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     webpush.setVapidDetails(subject, publicKey, privateKey);
     const { data: subscriptions, error } = await supabase
       .from("grin_push_subscriptions")
       .select("id, endpoint, subscription")
       .eq("user_id", userId);
-
     if (error) throw error;
     if (!subscriptions?.length) {
       return new Response(JSON.stringify({ sent: 0, reason: "No subscriptions" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
 
     const results = await Promise.allSettled(subscriptions.map(async (item: any) => {
       try {
-        await webpush.sendNotification(item.subscription, payload, { TTL: 60 * 60 });
+        await webpush.sendNotification(item.subscription, payload, { TTL: 3600 });
         return true;
       } catch (error: any) {
         if (error?.statusCode === 404 || error?.statusCode === 410) {
@@ -91,16 +91,14 @@ Deno.serve(async (req: Request) => {
       }
     }));
 
-    const sent = results.filter((result) => result.status === "fulfilled").length;
-    return new Response(JSON.stringify({ sent, attempted: results.length }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      sent: results.filter((result) => result.status === "fulfilled").length,
+      attempted: results.length,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (error) {
     console.error("GRIN push delivery failed:", error);
     return new Response(JSON.stringify({ error: "Push delivery failed" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
