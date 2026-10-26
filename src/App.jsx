@@ -370,7 +370,7 @@ export default function App() {
     if (penaltyPhase === 'shoot') {
       const keeper = directions[Math.floor(Math.random() * directions.length)];
       const powerFactor = Math.max(0, Math.min(100, power));
-      const keeperReads = Math.random() < (0.18 + powerFactor / 170);
+      const keeperReads = Math.random() < (0.42 - powerFactor / 250);
       const scored = keeper !== direction || !keeperReads;
       setPenaltyAnimation('shot-'+direction+(scored ? '-goal' : '-saved')+'-keeper-'+keeper);
       setPenaltyLastResult(scored ? 'GOAL!' : 'SAVED!');
@@ -2208,7 +2208,7 @@ export default function App() {
           </button>)}
         </div>
         <div className="penalty-power-row"><div className="penalty-power-copy"><strong>SHOT POWER</strong><span>{penaltyPower}%</span></div><div className="penalty-power-meter"><i style={{width:penaltyPower+'%'}} /></div></div>
-        <button type="button" className={'penalty-r2-trigger '+(penaltyCharging?'is-charging':'')} disabled={penaltyDone||penaltyAnimation!=='idle'} onPointerDown={event=>{event.preventDefault();if(penaltyDone||penaltyAnimation!=='idle')return;penaltyChargeStartRef.current=performance.now();penaltyPowerRef.current=0;setPenaltyPower(0);setPenaltyCharging(true);}} onPointerUp={event=>{event.preventDefault();if(!penaltyCharging)return;const power=Math.max(18,Math.min(100,Math.round((performance.now()-penaltyChargeStartRef.current)/13)));penaltyPowerRef.current=power;setPenaltyPower(power);setPenaltyCharging(false);playPenaltyDirection(penaltyAim,power);setTimeout(()=>{setPenaltyPower(0);penaltyPowerRef.current=0;},1150);}} onPointerCancel={()=>setPenaltyCharging(false)} onContextMenu={event=>event.preventDefault()} aria-label="Hold R2 to charge and release to shoot">
+        <button type="button" className={'penalty-r2-trigger '+(penaltyCharging?'is-charging':'')} disabled={penaltyDone||penaltyAnimation!=='idle'} onPointerDown={event=>{event.preventDefault();if(penaltyDone||penaltyAnimation!=='idle')return;event.currentTarget.setPointerCapture?.(event.pointerId);penaltyChargeStartRef.current=performance.now();penaltyPowerRef.current=0;setPenaltyPower(0);setPenaltyCharging(true);}} onPointerUp={event=>{event.preventDefault();if(!penaltyCharging)return;const power=Math.max(18,Math.min(100,Math.round((performance.now()-penaltyChargeStartRef.current)/13)));penaltyPowerRef.current=power;setPenaltyPower(power);setPenaltyCharging(false);playPenaltyDirection(penaltyAim,power);setTimeout(()=>{setPenaltyPower(0);penaltyPowerRef.current=0;},1150);}} onPointerCancel={()=>setPenaltyCharging(false)} onContextMenu={event=>event.preventDefault()} aria-label="Hold R2 to charge and release to shoot">
           <span className="penalty-r2-pill">R2</span><span className="penalty-r2-label">{penaltyCharging?'RELEASE TO SHOOT':'HOLD TO SHOOT'}</span><span className="penalty-r2-sub">{penaltyCharging?'BUILDING POWER':'PRESS & HOLD'}</span>
         </button>
         <p className="penalty-control-footnote">Choose a lane, hold R2, then release. More power makes the shot harder to stop.</p>
