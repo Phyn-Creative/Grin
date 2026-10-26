@@ -37,6 +37,11 @@ export default function App() {
   const [numberBest, setNumberBest] = useState(0);
   const [numberNotice, setNumberNotice] = useState('Combine matching tiles to reach 2048.');
 
+  const [connectFourBoard, setConnectFourBoard] = useState(Array(42).fill(''));
+  const [connectFourNotice, setConnectFourNotice] = useState('Your turn — choose a column.');
+  const [connectFourOver, setConnectFourOver] = useState(false);
+
+
   const [snakeBody, setSnakeBody] = useState([34, 33, 32]);
   const [snakeFood, setSnakeFood] = useState(105);
   const [snakeDirection, setSnakeDirection] = useState('right');
@@ -196,6 +201,56 @@ export default function App() {
     }
   }
 
+
+
+  function connectFourDrop(board, column, mark) {
+    const next = board.slice();
+    for (let row = 5; row >= 0; row--) {
+      const index = row * 7 + column;
+      if (!next[index]) { next[index] = mark; return { board: next, index }; }
+    }
+    return { board: next, index: -1 };
+  }
+  function connectFourWinner(board, mark) {
+    for (let row = 0; row < 6; row++) for (let col = 0; col < 7; col++) {
+      const i = row * 7 + col;
+      if (board[i] !== mark) continue;
+      if (col <= 3 && [1,2,3].every(n => board[i+n] === mark)) return true;
+      if (row <= 2 && [1,2,3].every(n => board[i+n*7] === mark)) return true;
+      if (row <= 2 && col <= 3 && [1,2,3].every(n => board[i+n*8] === mark)) return true;
+      if (row <= 2 && col >= 3 && [1,2,3].every(n => board[i+n*6] === mark)) return true;
+    }
+    return false;
+  }
+  function resetConnectFour() {
+    setConnectFourBoard(Array(42).fill(''));
+    setConnectFourOver(false);
+    setConnectFourNotice('Your turn — choose a column.');
+  }
+  function playConnectFour(column) {
+    if (connectFourOver) return;
+    const human = connectFourDrop(connectFourBoard, column, 'R');
+    if (human.index < 0) { setConnectFourNotice('That column is full. Pick another one.'); return; }
+    if (connectFourWinner(human.board, 'R')) {
+      setConnectFourBoard(human.board); setConnectFourOver(true); setConnectFourNotice('You win! Four in a row. 🎉'); return;
+    }
+    if (human.board.every(Boolean)) {
+      setConnectFourBoard(human.board); setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); return;
+    }
+    const legal = Array.from({length:7},(_,col)=>col).filter(col=>human.board[col] === '');
+    const findWinningColumn = (board, mark) => legal.find(col => { const move=connectFourDrop(board,col,mark); return move.index >= 0 && connectFourWinner(move.board,mark); });
+    let botColumn = findWinningColumn(human.board, 'Y');
+    if (botColumn == null) botColumn = findWinningColumn(human.board, 'R');
+    if (botColumn == null) {
+      const available = [3,2,4,1,5,0,6].filter(col=>legal.includes(col));
+      botColumn = available[Math.floor(Math.random() * Math.min(3, available.length))] ?? available[0];
+    }
+    const bot = connectFourDrop(human.board, botColumn, 'Y');
+    setConnectFourBoard(bot.board);
+    if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
+    else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
+    else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
+  }
 
   function create2048Board(){
     const board=Array(16).fill(0);
@@ -1978,6 +2033,7 @@ export default function App() {
       <button type="button" className={selectedGrinGame === 'memory' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('memory')}>Memory Match</button>
       <button type="button" className={selectedGrinGame === 'rps' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('rps')}>Rock Paper Scissors</button>
       <button type="button" className={selectedGrinGame === '2048' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('2048')}>2048</button>
+      <button type="button" className={selectedGrinGame === 'connect4' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('connect4')}>Connect Four</button>
     </div>
     {selectedGrinGame === '2048' ? <>
       <div className="feed-head"><div><h2>2048</h2><p>Slide the tiles, merge matching numbers, and reach 2048.</p></div><Trophy size={25}/></div>
