@@ -2619,3 +2619,18 @@ button:active { transform: translateY(1px); }
 .number2048-tile.has-value{background:#e9e1d3}
 .number2048-tile.tile-4{background:#e4d6b8}.number2048-tile.tile-8{background:#edbd83;color:#392719}.number2048-tile.tile-16{background:#efa36d;color:#392719}.number2048-tile.tile-32{background:#e98261;color:#fff}.number2048-tile.tile-64{background:#d95b48;color:#fff}.number2048-tile.tile-128,.number2048-tile.tile-256,.number2048-tile.tile-512{background:#d8bd62;color:#28251b}.number2048-tile.tile-1024,.number2048-tile.tile-2048{background:#bda244;color:#fff;font-size:clamp(16px,4.2vw,28px)}
 .number2048-controls{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px auto}.number2048-controls>div{display:flex;gap:6px}.number2048-controls button{min-width:48px;min-height:42px;font-size:20px}
+
+
+/* GRIN Connect Four */
+.connect-four-board{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(3px,1vw,7px);width:min(100%,490px);margin:10px auto;padding:clamp(6px,2vw,12px);background:#1767a3;border:1px solid #0f5489;border-radius:18px;box-shadow:0 8px 22px rgba(14,68,108,.16)}
+.connect-four-drop{min-width:0;aspect-ratio:1;border:0;border-radius:50%;background:#e8f3fa;color:#1767a3;font-size:clamp(14px,4vw,23px);font-weight:800;cursor:pointer}
+.connect-four-drop:disabled{opacity:.45;cursor:default}
+.connect-four-cell{aspect-ratio:1;min-width:0;border-radius:50%;background:#e8f3fa;box-shadow:inset 0 2px 5px rgba(0,0,0,.12)}
+.connect-four-cell.disc-red{background:#e84c54;box-shadow:inset 0 2px 5px rgba(0,0,0,.18),0 0 0 1px rgba(255,255,255,.15)}
+.connect-four-cell.disc-yellow{background:#f5ca48;box-shadow:inset 0 2px 5px rgba(0,0,0,.16),0 0 0 1px rgba(255,255,255,.15)}
+.connect-four-legend{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;color:var(--text,#173528);font-size:13px}
+.connect-four-legend span{display:flex;align-items:center;gap:7px}
+.connect-four-legend i{display:inline-block;width:13px;height:13px;border-radius:50%}
+.connect-four-legend .disc-red{background:#e84c54}.connect-four-legend .disc-yellow{background:#f5ca48}
+@media(max-width:420px){.connect-four-board{gap:3px;padding:6px;border-radius:12px}.connect-four-drop{font-size:14px}}
+[data-grin-theme="dark"] .connect-four-cell:not(.disc-red):not(.disc-yellow){background:#dce9f2}
