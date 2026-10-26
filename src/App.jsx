@@ -765,9 +765,25 @@ export default function App() {
   }
 
   async function reactToPost(postId,reaction='like') {
-    const { data: existing } = await supabase.from('grin_post_reactions').select('reaction').eq('post_id',postId).eq('user_id',session.user.id).maybeSingle();
-    if (existing?.reaction===reaction) { await supabase.from('grin_post_reactions').delete().eq('post_id',postId).eq('user_id',session.user.id); setReactionCounts(x=>({...x,[postId]:Math.max(0,(x[postId]||1)-1)})); setReactionMine(x=>({...x,[postId]:null})); }
-    else { if(existing) await supabase.from('grin_post_reactions').delete().eq('post_id',postId).eq('user_id',session.user.id); await supabase.from('grin_post_reactions').insert({post_id:postId,user_id:session.user.id,reaction}); setReactionCounts(x=>({...x,[postId]:(x[postId]||0)+(existing?0:1)})); setReactionMine(x=>({...x,[postId]:reaction})); } setReactionMenu(null);
+    setPostNotice('');
+    const { data: existing, error: lookupError } = await supabase.from('grin_post_reactions').select('reaction').eq('post_id',postId).eq('user_id',session.user.id).maybeSingle();
+    if (lookupError) { setPostNotice('Could not load your reaction. Please try again.'); return; }
+    if (existing?.reaction===reaction) {
+      const {error}=await supabase.from('grin_post_reactions').delete().eq('post_id',postId).eq('user_id',session.user.id);
+      if(error){setPostNotice('Could not remove your reaction: '+error.message);return;}
+      setReactionCounts(x=>({...x,[postId]:Math.max(0,(x[postId]||1)-1)}));
+      setReactionMine(x=>({...x,[postId]:null}));
+    } else {
+      if(existing) {
+        const {error:deleteError}=await supabase.from('grin_post_reactions').delete().eq('post_id',postId).eq('user_id',session.user.id);
+        if(deleteError){setPostNotice('Could not update your reaction: '+deleteError.message);return;}
+      }
+      const {error:insertError}=await supabase.from('grin_post_reactions').insert({post_id:postId,user_id:session.user.id,reaction});
+      if(insertError){setPostNotice('Could not save your reaction: '+insertError.message);return;}
+      setReactionCounts(x=>({...x,[postId]:(x[postId]||0)+(existing?0:1)}));
+      setReactionMine(x=>({...x,[postId]:reaction}));
+    }
+    setReactionMenu(null);
   }
 
 
