@@ -2296,17 +2296,20 @@ export default function App() {
       <p className="connect-four-legend"><span><i className="disc-red"/> You</span><span><i className="disc-yellow"/> GRIN Bot</span></p>
       <div className="card-actions"><button type="button" className="primary" onClick={resetConnectFour}>New round</button></div>
     </> : selectedGrinGame === '2048' ? <>
-      <div className="feed-head"><div><h2>2048</h2><p>Slide the tiles, merge matching numbers, and reach 2048.</p></div><Trophy size={25}/></div>
-      <div className="number2048-scores"><span>Score <strong>{numberScore}</strong></span><span>Best this session <strong>{numberBest}</strong></span></div>
-      <div className="number2048-board" role="group" aria-label="2048 number puzzle" tabIndex={0} onKeyDown={e=>{const dirs={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};if(dirs[e.key]){e.preventDefault();move2048(dirs[e.key]);}}}>
-        {numberTiles.map((value,index)=><div key={index} className={'number2048-tile'+(value?' has-value tile-'+Math.min(value,2048):'')} aria-label={value?String(value):'Empty tile'}>{value||''}</div>)}
+      <section className="number2048-hero"><div><span className="number2048-kicker"><i/> GRIN ARCADE · PUZZLE MODE</span><h2>2048 <em>Merge Lab</em></h2><p>Think ahead. Chain your merges. Chase the golden tile.</p></div><div className="number2048-hero-art" aria-hidden="true"><span>2</span><span>4</span><span>8</span></div></section>
+      <div className="number2048-scorecards"><div><small>CURRENT SCORE</small><strong>{numberScore.toLocaleString()}</strong></div><div><small>BEST THIS SESSION</small><strong>{numberBest.toLocaleString()}</strong></div></div>
+      <div className="number2048-play-wrap">
+        <div className="number2048-board" role="group" aria-label="2048 number puzzle" tabIndex={0} onClick={e=>e.currentTarget.focus()} onKeyDown={e=>{const dirs={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};if(dirs[e.key]){e.preventDefault();move2048(dirs[e.key]);}}} onTouchStart={e=>{const t=e.touches[0];e.currentTarget.dataset.touchX=t.clientX;e.currentTarget.dataset.touchY=t.clientY;}} onTouchEnd={e=>{const x=Number(e.currentTarget.dataset.touchX),y=Number(e.currentTarget.dataset.touchY),t=e.changedTouches[0],dx=t.clientX-x,dy=t.clientY-y;if(Math.max(Math.abs(dx),Math.abs(dy))<24)return;if(Math.abs(dx)>Math.abs(dy))move2048(dx>0?'right':'left');else move2048(dy>0?'down':'up');}}>
+          {numberTiles.map((value,index)=><div key={index} className={'number2048-tile'+(value?' has-value tile-'+Math.min(value,2048):'')} aria-label={value?String(value):'Empty tile'}>{value||''}</div>)}
+        </div>
+        <div className="number2048-controls" role="group" aria-label="Move tiles">
+          <button type="button" className="number2048-arrow" onClick={()=>move2048('up')} aria-label="Move up">↑</button>
+          <div><button type="button" className="number2048-arrow" onClick={()=>move2048('left')} aria-label="Move left">←</button><button type="button" className="number2048-arrow" onClick={()=>move2048('down')} aria-label="Move down">↓</button><button type="button" className="number2048-arrow" onClick={()=>move2048('right')} aria-label="Move right">→</button></div>
+        </div>
       </div>
-      <div className="number2048-controls" role="group" aria-label="Move tiles">
-        <button type="button" className="secondary-btn" onClick={()=>move2048('up')} aria-label="Move up">↑</button>
-        <div><button type="button" className="secondary-btn" onClick={()=>move2048('left')} aria-label="Move left">←</button><button type="button" className="secondary-btn" onClick={()=>move2048('down')} aria-label="Move down">↓</button><button type="button" className="secondary-btn" onClick={()=>move2048('right')} aria-label="Move right">→</button></div>
-      </div>
-      <p className="game-turn-status" aria-live="polite">{numberNotice}</p>
-      <div className="card-actions"><button type="button" className="primary" onClick={reset2048}>New game</button></div>
+      <p className="number2048-hint">HOW TO PLAY <span>Use arrow keys, tap the controls, or swipe on the board.</span></p>
+      <p className="number2048-status" aria-live="polite">{numberNotice}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={reset2048}>↻ New game</button></div>
     </> : selectedGrinGame === 'ttt' ? <>
       <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
       {!gameRoomCode&&<div className="grin-bot-difficulty"><label htmlFor="grin-bot-level">GRIN Bot difficulty</label><select id="grin-bot-level" value={grinBotDifficulty} onChange={e=>setGrinBotDifficulty(e.target.value)}><option value="easy">Easy · Friendly</option><option value="normal">Normal · Fair challenge</option><option value="hard">Hard · Unbeatable strategy</option></select><small>{grinBotDifficulty==='easy'?'A relaxed game with plenty of room to win.':grinBotDifficulty==='normal'?'A fair challenge with occasional imperfect moves.':'The strongest strategy — prepare for a tough match!'}</small></div>}
