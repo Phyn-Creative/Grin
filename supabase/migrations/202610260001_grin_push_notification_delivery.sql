@@ -69,3 +69,19 @@ create trigger grin_push_notification_after_insert
 
 comment on table public.grin_push_subscriptions is
   'Web Push endpoints owned by each authenticated GRIN user; subscription material is private.';
+
+create or replace function public.get_grin_vapid_config()
+returns jsonb
+language sql
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'public_key', (select decrypted_secret from vault.decrypted_secrets where name = 'grin_vapid_public_key' limit 1),
+    'private_key', (select decrypted_secret from vault.decrypted_secrets where name = 'grin_vapid_private_key' limit 1),
+    'subject', (select decrypted_secret from vault.decrypted_secrets where name = 'grin_vapid_subject' limit 1)
+  )
+$$;
+
+revoke all on function public.get_grin_vapid_config() from public, anon, authenticated;
+grant execute on function public.get_grin_vapid_config() to service_role;
