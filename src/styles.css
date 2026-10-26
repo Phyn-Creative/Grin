@@ -1499,7 +1499,7 @@ button:active { transform: translateY(1px); }
 @media(max-width:680px){.settings-page,.directory-page{padding:18px 14px 90px}.theme-options{grid-template-columns:1fr}.theme-option{padding:10px}.directory-grid,.directory-result-grid{grid-template-columns:1fr}.directory-card{padding:12px}.directory-card-icon{width:38px;height:38px}.grin-toast{top:74px;right:10px}.mobile-bottom-nav{grid-template-columns:repeat(6,minmax(0,1fr));gap:0}.mobile-bottom-nav button{font-size:10px}.mobile-bottom-nav button svg{width:18px;height:18px}}
 
 
-/* Unified mobile navigation: five balanced tabs, no legacy sidebar overlap */
+/* Unified mobile navigation: six balanced tabs, no legacy sidebar overlap */
 @media (max-width: 800px) {
   .sidebar { display: none !important; }
   .layout { min-height: calc(100vh - 64px); }
@@ -1512,7 +1512,7 @@ button:active { transform: translateY(1px); }
     bottom: max(8px, env(safe-area-inset-bottom, 0px));
     width: auto;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     align-items: stretch;
     gap: 4px;
     padding: 7px 8px;
@@ -1556,12 +1556,12 @@ button:active { transform: translateY(1px); }
     font-weight: 800;
   }
   .mobile-bottom-nav button.active svg {
-    width: 30px;
-    height: 28px;
-    padding: 4px;
-    border-radius: 10px;
-    background: #103f2d;
-    color: #f2cf7b;
+    width: 21px;
+    height: 21px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #103f2d;
     stroke-width: 2.1;
   }
   .mobile-bottom-nav .mobile-nav-create { background: transparent; box-shadow: none; }
