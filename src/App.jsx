@@ -31,6 +31,10 @@ export default function App() {
   const [gameInviteTarget, setGameInviteTarget] = useState('');
   const [gameInviteCommunity, setGameInviteCommunity] = useState('');
   const gameChannelRef = useRef(null);
+  const gameBoardRef = useRef(gameBoard);
+  const gameTurnRef = useRef(gameTurn);
+  gameBoardRef.current = gameBoard;
+  gameTurnRef.current = gameTurn;
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [ownPostMenuId, setOwnPostMenuId] = useState(null);
   const [searchNotice, setSearchNotice] = useState('');
@@ -580,7 +584,7 @@ export default function App() {
       if(payload.winner)setGameNotice(payload.winner==='draw'?'It is a draw!':payload.winner+' wins!');
       else setGameNotice('Your opponent made a move.');
     }).on('broadcast',{event:'game-request-state'},()=>{
-      if(gameMark==='X')channel.send({type:'broadcast',event:'game-state',payload:{board:gameBoard,turn:gameTurn,winner:grinGameWinner(gameBoard),room:gameRoomCode}});
+      if(gameMark==='X'){const board=gameBoardRef.current;channel.send({type:'broadcast',event:'game-state',payload:{board,turn:gameTurnRef.current,winner:grinGameWinner(board),room:gameRoomCode}});}
     }).subscribe(status=>{
       if(status==='SUBSCRIBED'){
         setGameNotice(gameMark==='X'?'Room ready. Send your invite link.':'Connected to room. Waiting for the first move.');
