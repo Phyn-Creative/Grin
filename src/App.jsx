@@ -36,6 +36,7 @@ export default function App() {
   const [snakeFood, setSnakeFood] = useState(105);
   const [snakeDirection, setSnakeDirection] = useState('right');
   const [snakeRunning, setSnakeRunning] = useState(false);
+  const [snakeSpeed, setSnakeSpeed] = useState('normal');
   const [snakeScore, setSnakeScore] = useState(0);
   const [snakeOpponentBody, setSnakeOpponentBody] = useState([141,142,143]);
   const [snakeOpponentScore, setSnakeOpponentScore] = useState(0);
@@ -123,9 +124,9 @@ export default function App() {
       if(next.dead){setSnakeRunning(false);setSnakeNotice('Game over! Score: '+snakeScoreRef.current+'. Press Play again to restart.');return;}
       snakeBodyRef.current=next.body;setSnakeBody(next.body);
       if(next.eating){const score=snakeScoreRef.current+1;snakeScoreRef.current=score;setSnakeScore(score);let food;do{food=Math.floor(Math.random()*192);}while(next.body.includes(food));snakeFoodRef.current=food;setSnakeFood(food);setSnakeNotice('Nice! Keep going.');}
-    },180);
+    },snakeRoomCode?180:(snakeSpeed==='slow'?260:snakeSpeed==='fast'?120:180));
     return ()=>window.clearInterval(timer);
-  },[active,selectedGrinGame,snakeRunning,snakeRoomCode,snakeRoomRole]);
+  },[active,selectedGrinGame,snakeRunning,snakeRoomCode,snakeRoomRole,snakeSpeed]);
 
   useEffect(() => {
     if (active !== 'games' || selectedGrinGame !== 'snake') return;
@@ -1932,6 +1933,7 @@ export default function App() {
     </> : selectedGrinGame === 'snake' ? <>
       <div className="feed-head"><div><h2>Snake</h2><p>{snakeRoomCode ? 'Snake Arena · Room '+snakeRoomCode+' · '+(snakeRoomRole==='host'?'You are hosting':'You are a challenger') : 'Eat the glowing fruit, grow longer, and avoid the walls and your own tail.'}</p></div><Trophy size={25}/></div>
       <div className="snake-score">{snakeRoomCode ? <><span>You <strong>{snakeScore}</strong></span><span> · Opponent <strong>{snakeOpponentScore}</strong></span><span> · {snakeRoomRole==='host'?'Host':'Challenger'}</span></> : <>Score <strong>{snakeScore}</strong></>}</div>
+      {!snakeRoomCode&&<div className="grin-bot-difficulty grin-snake-speed"><label htmlFor="grin-snake-speed">Snake speed</label><select id="grin-snake-speed" value={snakeSpeed} disabled={snakeRunning} onChange={e=>setSnakeSpeed(e.target.value)}><option value="slow">Slow · Relaxed</option><option value="normal">Normal · Classic</option><option value="fast">Fast · Reflex challenge</option></select><small>{snakeRunning?'Pause or finish the current run to change speed.':snakeSpeed==='slow'?'More time to react and plan your turns.':snakeSpeed==='normal'?'The classic pace for a balanced game.':'Quick movement for players who like a challenge.'}</small></div>}
       <div className="profile-form">
         {!snakeRoomCode ? <>
           <button type="button" className="primary" onClick={createSnakeRoom}>Create Snake Arena</button>
