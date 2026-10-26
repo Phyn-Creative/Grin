@@ -80,7 +80,7 @@ function Penalty3D({ animation, result, phase, shotPower = 70 }) {
     const b=animation.match(/keeper-(left|center|right)-(save|goal)-shot-(left|center|right)/);
     const match=a||b;if(!match)return;
     const target=a?match[1]:match[3],keeperDirection=a?match[4]:match[1],saved=a?match[2]==='saved':match[2]==='save';
-    const power=Math.max(0,Math.min(100,Number(shotPower)||0));const start=performance.now(),duration=1320-power*3.7;let frame=0;
+    const power=Math.max(0,Math.min(100,Number(shotPower)||0));const start=performance.now(),duration=1050-power;let frame=0;
     const tick=now=>{const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,2.4);const x=target==='left'?-2.45:target==='right'?2.45:0;const y=saved?1.45:(target==='center'?2.05:1.85);const arc=(.48+power/95)*Math.sin(t*Math.PI);ball.position.set(x*e,.3+(y-.3)*e+arc,5+(-10.65)*e);ball.rotation.x=e*(7+power/18);ball.rotation.z=e*(4+power/24);shadow.position.set(ball.position.x,.025,ball.position.z);shadow.scale.setScalar(1-e*.62);if(saved||b){const d=keeperDirection==='left'?-1:keeperDirection==='right'?1:0;const dive=e*e;keeper.position.x=d*1.95*dive;keeper.position.y=.18*dive;keeper.rotation.z=-d*1.02*dive;keeper.rotation.x=-.35*dive;keeper.scale.set(1+.18*dive,1-.16*dive,1);}if(t<1)frame=requestAnimationFrame(tick);};
     frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
   },[animation]);
@@ -379,7 +379,7 @@ export default function App() {
       setPenaltyNotice(scored
         ? 'GOAL! '+powerFactor+'% power — the keeper went '+keeper+'. Your turn to defend — choose where to dive.'
         : 'SAVED! GRIN Bot read your '+direction+' shot. Your turn to defend.');
-      setTimeout(() => setPenaltyAnimation('idle'), 950);
+      setTimeout(() => setPenaltyAnimation('idle'), 1050-powerFactor);
       return;
     }
     const shot = directions[Math.floor(Math.random() * directions.length)];
