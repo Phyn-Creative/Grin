@@ -23,8 +23,8 @@ export default function ExpansionGames() {
  const [mode,setMode]=useState('word');
  const [word,setWord]=useState(()=>WORDS[Math.floor(Math.random()*WORDS.length)]);
  const [guess,setGuess]=useState(''); const [guesses,setGuesses]=useState([]); const [mines,setMines]=useState(makeMines); const [mineOver,setMineOver]=useState(false); const [mineWon,setMineWon]=useState(false);
- const [chess,setChess]=useState(initChess); const [chessPick,setChessPick]=useState(null); const [chessTurn,setChessTurn]=useState('white'); const [chessMsg,setChessMsg]=useState('White to move · tap a piece, then a destination.');
- const [draughts,setDraughts]=useState(initDraughts); const [draughtPick,setDraughtPick]=useState(null); const [draughtTurn,setDraughtTurn]=useState('white');
+ const [chess,setChess]=useState(initChess); const [chessPick,setChessPick]=useState(null); const [chessTurn,setChessTurn]=useState('white'); const [chessMsg,setChessMsg]=useState('White to move · tap a piece, then a destination.'); const [chessThinking,setChessThinking]=useState(false);
+ const [draughts,setDraughts]=useState(initDraughts); const [draughtPick,setDraughtPick]=useState(null); const [draughtTurn,setDraughtTurn]=useState('white'); const [draughtThinking,setDraughtThinking]=useState(false);
  const [qIndex,setQIndex]=useState(0); const [qScore,setQScore]=useState(0); const [qAnswered,setQAnswered]=useState(false); const [qDone,setQDone]=useState(false);
  const [prediction,setPrediction]=useState('draw'); const [predSaved,setPredSaved]=useState(false); const [matchResult,setMatchResult]=useState(null); const [predictionChecked,setPredictionChecked]=useState(false);
  const [party,setParty]=useState('truth'); const [partyCard,setPartyCard]=useState(''); const [partyResponse,setPartyResponse]=useState(''); const [partyReaction,setPartyReaction]=useState(''); const [partyDone,setPartyDone]=useState(false); const [adultConfirmed,setAdultConfirmed]=useState(false); const [compat,setCompat]=useState([0,0,0]); const [compatDone,setCompatDone]=useState(false); const [tournamentRound,setTournamentRound]=useState(1); const [tournamentPick,setTournamentPick]=useState('GRIN United'); const [tournamentDone,setTournamentDone]=useState(false);
@@ -45,15 +45,18 @@ export default function ExpansionGames() {
   const captured=chess[i].p;
   next[i]={...piece};next[chessPick]={p:'',side:null};
   if(captured==='♚'){setChess(next);setChessPick(null);setChessMsg('You win! GRIN Bot’s king has been captured.');setChessTurn('white');return;}
-  const botMoves=getCasualChessMoves(next,'black');
-  if(!botMoves.length){setChess(next);setChessPick(null);setChessMsg('GRIN Bot has no available moves. You win this casual round!');return;}
-  const captures=botMoves.filter(m=>next[m.to].p);
-  const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
-  const afterBot=next.map(x=>({...x}));
-  const botPiece=afterBot[chosen.from];const humanCaptured=afterBot[chosen.to].p;
-  afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
-  setChess(afterBot);setChessPick(null);setChessTurn('white');
-  setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
+  setChessPick(null);setChessTurn('black');setChessThinking(true);setChessMsg('🤔 GRIN Bot is thinking…');
+  window.setTimeout(()=>{
+   const botMoves=getCasualChessMoves(next,'black');
+   if(!botMoves.length){setChess(next);setChessTurn('white');setChessThinking(false);setChessMsg('GRIN Bot has no available moves. You win this casual round!');return;}
+   const captures=botMoves.filter(m=>next[m.to].p);
+   const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+   const afterBot=next.map(x=>({...x}));
+   const botPiece=afterBot[chosen.from];const humanCaptured=afterBot[chosen.to].p;
+   afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
+   setChess(afterBot);setChessTurn('white');setChessThinking(false);
+   setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
+  },1800);
  };
  const draughtTap=(i)=>{
   if(draughtTurn!=='white')return;
@@ -71,15 +74,19 @@ export default function ExpansionGames() {
   }
   if(!valid){setNotice('Choose a legal diagonal move or jump over a bot piece.');setDraughtPick(null);return;}
   if(nr===0)next[i].king=true;
-  const botMoves=getDraughtsMoves(next,'black');
-  if(!botMoves.length){setDraughts(next);setDraughtPick(null);setNotice('You win! GRIN Bot has no legal moves.');return;}
-  const captures=botMoves.filter(m=>m.capture);
-  const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
-  next[chosen.to]={...next[chosen.from]};next[chosen.from]={p:'',king:false};
-  if(chosen.capture!==null)next[chosen.capture]={p:'',king:false};
-  if(Math.floor(chosen.to/8)===7)next[chosen.to].king=true;
-  setDraughts(next);setDraughtPick(null);setDraughtTurn('white');
-  setNotice(chosen.capture!==null?'GRIN Bot jumped a piece. Your turn.':'GRIN Bot moved. Your turn.');
+  setDraughtPick(null);setDraughtTurn('black');setDraughtThinking(true);setNotice('🤔 GRIN Bot is thinking…');
+  window.setTimeout(()=>{
+   const botMoves=getDraughtsMoves(next,'black');
+   if(!botMoves.length){setDraughts(next);setDraughtTurn('white');setDraughtThinking(false);setNotice('You win! GRIN Bot has no legal moves.');return;}
+   const captures=botMoves.filter(m=>m.capture);
+   const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+   const afterBot=next.map(x=>({...x}));
+   afterBot[chosen.to]={...afterBot[chosen.from]};afterBot[chosen.from]={p:'',king:false};
+   if(chosen.capture!==null)afterBot[chosen.capture]={p:'',king:false};
+   if(Math.floor(chosen.to/8)===7)afterBot[chosen.to].king=true;
+   setDraughts(afterBot);setDraughtTurn('white');setDraughtThinking(false);
+   setNotice(chosen.capture!==null?'GRIN Bot jumped a piece. Your turn.':'GRIN Bot moved. Your turn.');
+  },1800);
  };
  const menus=[['word','Word Guess','🔤'],['mines','Minesweeper','💣'],['chess','Chess','♟️'],['draughts','Dama / Draughts','⚫'],['quiz','GRIN Trivia','🧠'],['predict','Score Predictor','⚽'],['party','Truth or Dare','🎲'],['couples','Couples & compatibility','💞'],['rewards','Points & rankings','🏆'],['tournament','Tournaments','🥇']];
  const compatScore=useMemo(()=>Math.round(compat.reduce((a,b)=>a+b,0)/3),[compat]);
