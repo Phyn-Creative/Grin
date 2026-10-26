@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MessageCircle, Users, Compass, Bell, UserRound, Search, Plus, Send, Smile, LogOut, House, Palette, ShoppingBag, BriefcaseBusiness, Store, MoreHorizontal, Pencil, Trash2, X, Archive, BellOff, Volume2, ChevronLeft, ChevronRight, Eye, Settings as SettingsIcon, Sun, Moon, Mic, Camera, Square, ShieldAlert, Ban, Pin, Gamepad2, Trophy } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import * as THREE from 'three';
+import ExpansionGames from './ExpansionGames';
 
 const fallbackChats = [{ id: 'welcome', name: 'Welcome to GRIN', preview: 'This is where your conversations come alive.', initials: 'G' }];
 
@@ -2333,8 +2334,9 @@ export default function App() {
       <button type="button" className={selectedGrinGame === 'connect4' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('connect4')}>Connect Four</button>
       <button type="button" className={selectedGrinGame === 'football' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('football')}>Penalty Shootout ⚽</button>
       <button type="button" className={selectedGrinGame === 'trivia' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('trivia')}>Football Trivia 🧠</button>
+      <button type="button" className={['wordguess','mines','chess','draughts','grintrivia','predict','party','couples','rewards'].includes(selectedGrinGame) ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('wordguess')}>🕹️ Arcade Expansion</button>
     </div>
-    {selectedGrinGame === 'trivia' ? <>
+    {['wordguess','mines','chess','draughts','grintrivia','predict','party','couples','rewards'].includes(selectedGrinGame) ? <ExpansionGames key="grin-expansion" /> : selectedGrinGame === 'trivia' ? <>
       <div className="trivia-hero"><div className="trivia-hero-kicker"><span className="trivia-live-dot" /> GRIN SPORTS · QUIZ ARENA</div><div className="trivia-hero-main"><div><h2>Football <em>Trivia</em></h2><p>Know the game. Prove your football IQ.</p></div><div className="trivia-ball-art" aria-hidden="true">⚽</div></div><div className="trivia-hero-stats"><span><strong>5</strong> QUESTIONS</span><span><strong>3</strong> DIFFICULTIES</span><span><strong>FREE</strong> TO PLAY</span></div></div>
       <section className="trivia-difficulty-wrap" aria-label="Choose difficulty"><div className="trivia-section-label"><span>01 / SELECT YOUR LEVEL</span><small>Choose your challenge</small></div><div className="trivia-difficulty-grid">{['Easy','Medium','Hard'].map((level,index)=><button key={level} type="button" className={'trivia-difficulty '+(triviaDifficulty===level?'is-selected':'')} onClick={()=>startFootballTriviaRound(level)}><span className="trivia-difficulty-icon">{['◉','◆','✦'][index]}</span><strong>{level}</strong><small>{['Warm-up · Fundamentals','Matchday · Deeper knowledge','Elite · For the obsessed'][index]}</small><span className="trivia-difficulty-check">{triviaDifficulty===level?'✓':'+'}</span></button>)}</div></section>
       <div className="trivia-score-strip"><span><small>QUESTION</small><strong>{triviaFinished?5:triviaIndex+1}<i> / 5</i></strong></span><span><small>YOUR SCORE</small><strong>{triviaScore}<i> / 5</i></strong></span><span><small>LEVEL</small><strong>{triviaDifficulty.toUpperCase()}</strong></span></div><div className="trivia-progress-track"><i style={{width:((triviaFinished?5:triviaIndex)/5*100)+'%'}} /></div>
