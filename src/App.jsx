@@ -63,6 +63,7 @@ export default function App() {
   const [memoryScores,setMemoryScores]=useState({host:0,guest:0});
   const memoryChannelRef=useRef(null);
   const memoryPendingMismatchRef=useRef(false);
+  const memoryMismatchTimerRef=useRef(null);
   const memoryStateRef=useRef({});
   const [rpsChoice, setRpsChoice] = useState('');
   const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
@@ -296,6 +297,8 @@ export default function App() {
   },[rpsRoomCode,rpsChoice,rpsOpponentChoice,rpsRoundResolved]);
 
   function startMemoryGame(difficulty=memoryDifficulty) {
+    if(memoryMismatchTimerRef.current!==null){window.clearTimeout(memoryMismatchTimerRef.current);memoryMismatchTimerRef.current=null;}
+    memoryPendingMismatchRef.current=false;
     const pairCount=difficulty==='easy'?6:difficulty==='hard'?16:10;
     const emojiPool=['🍋','🍓','🍇','🍉','🥝','🍒','🍊','🍍','🥑','🍌','🍎','🍐','🍑','🥥','🫐','🥕'];
     const deck=emojiPool.slice(0,pairCount).flatMap(emoji=>[emoji,emoji]);
@@ -328,11 +331,16 @@ export default function App() {
   function scheduleMemoryMismatchClear(snapshot){
     if(memoryPendingMismatchRef.current)return;
     memoryPendingMismatchRef.current=true;
-    window.setTimeout(()=>{
-      const nextTurn=snapshot.turn;
-      const clean={...snapshot,flipped:[],turn:nextTurn,notice:'Next player’s turn.'};
-      setMemoryFlipped([]);setMemoryTurn(nextTurn);setMemoryNotice(clean.notice);
-      memoryChannelRef.current?.send({type:'broadcast',event:'memory-state',payload:clean});
+    memoryMismatchTimerRef.current=window.setTimeout(()=>{
+      memoryMismatchTimerRef.current=null;
+      const latest=memoryStateRef.current||{};
+      const samePair=Array.isArray(latest.flipped)&&latest.flipped.length===2&&
+        latest.flipped[0]===snapshot.flipped?.[0]&&latest.flipped[1]===snapshot.flipped?.[1];
+      if(samePair&&latest.cards?.[latest.flipped[0]]?.emoji!==latest.cards?.[latest.flipped[1]]?.emoji){
+        const clean={...latest,room:memoryRoomCode,flipped:[],notice:'Next player’s turn.'};
+        setMemoryFlipped([]);setMemoryTurn(clean.turn||'guest');setMemoryNotice(clean.notice);
+        memoryChannelRef.current?.send({type:'broadcast',event:'memory-state',payload:clean});
+      }
       memoryPendingMismatchRef.current=false;
     },750);
   }
@@ -350,6 +358,8 @@ export default function App() {
     const params=new URLSearchParams(window.location.search);params.set('game','memory');params.set('room',code);window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
   }
   function exitMemoryRoom(){
+    if(memoryMismatchTimerRef.current!==null){window.clearTimeout(memoryMismatchTimerRef.current);memoryMismatchTimerRef.current=null;}
+    memoryPendingMismatchRef.current=false;
     if(memoryChannelRef.current){supabase.removeChannel(memoryChannelRef.current);memoryChannelRef.current=null;}
     setMemoryRoomCode('');setMemoryRoomRole('');setMemoryJoinCode('');setMemoryTurn('host');setMemoryScores({host:0,guest:0});
     const params=new URLSearchParams(window.location.search);params.delete('game');params.delete('room');const query=params.toString();window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
