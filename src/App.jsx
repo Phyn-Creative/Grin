@@ -13,7 +13,7 @@ export default function App() {
   const [username, setUsername] = useState('');
   const [authError, setAuthError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [active, setActive] = useState(() => { try { const saved = localStorage.getItem('grin-last-page'); return ['discover','chats','status','directory','explore','profile','business','creator','marketplace','jobs','communities','saved'].includes(saved) ? saved : 'discover'; } catch { return 'discover'; } });
+  const [active, setActive] = useState(() => { try { const saved = localStorage.getItem('grin-last-page'); return ['discover','chats','status','directory','explore','profile','business','creators','marketplace','jobs','communities','saved','notifications','settings'].includes(saved) ? saved : 'discover'; } catch { return 'discover'; } });
   const [theme, setTheme] = useState(() => { try { return localStorage.getItem('grin-theme') || 'grin'; } catch { return 'grin'; } });
   const [notificationToast, setNotificationToast] = useState(null);
   const [toastEnabled, setToastEnabled] = useState(() => { try { return localStorage.getItem('grin-toasts') !== 'off'; } catch { return true; } });
