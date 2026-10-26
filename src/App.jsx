@@ -2287,14 +2287,14 @@ export default function App() {
       </div>}
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
     </> : selectedGrinGame === 'connect4' ? <>
-      <div className="feed-head"><div><h2>Connect Four</h2><p>Drop four discs in a row horizontally, vertically, or diagonally against GRIN Bot.</p></div><Trophy size={25}/></div>
-      <div className="connect-four-board" role="group" aria-label="Connect Four board">
+      <section className="connect-four-hero"><div><span className="connect-four-kicker"><i/> GRIN ARCADE · STRATEGY</span><h2>Connect <em>Four</em></h2><p>Read the board. Block the threat. Line up four to win.</p></div><div className="connect-four-hero-art" aria-hidden="true"><i/><i/><i/><i/></div></section>
+      <div className="connect-four-matchbar"><span><i className="disc-red"/> YOU <b>RED</b></span><span className="connect-four-vs">VS</span><span><i className="disc-yellow"/> GRIN BOT <b>GOLD</b></span></div>
+      <div className="connect-four-board-shell"><div className="connect-four-board" role="group" aria-label="Connect Four board">
         {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
         {connectFourBoard.map((cell,index)=><div key={index} className={'connect-four-cell'+(cell?' '+(cell==='R'?'disc-red':'disc-yellow'):'')} role="img" aria-label={cell==='R'?'Red disc':cell==='Y'?'Yellow disc':'Empty space'} />)}
-      </div>
-      <p className="game-turn-status" aria-live="polite">{connectFourNotice}</p>
-      <p className="connect-four-legend"><span><i className="disc-red"/> You</span><span><i className="disc-yellow"/> GRIN Bot</span></p>
-      <div className="card-actions"><button type="button" className="primary" onClick={resetConnectFour}>New round</button></div>
+      </div></div>
+      <p className="connect-four-status" aria-live="polite">{connectFourNotice}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={resetConnectFour}>↻ New round</button></div>
     </> : selectedGrinGame === '2048' ? <>
       <section className="number2048-hero"><div><span className="number2048-kicker"><i/> GRIN ARCADE · PUZZLE MODE</span><h2>2048 <em>Merge Lab</em></h2><p>Think ahead. Chain your merges. Chase the golden tile.</p></div><div className="number2048-hero-art" aria-hidden="true"><span>2</span><span>4</span><span>8</span></div></section>
       <div className="number2048-scorecards"><div><small>CURRENT SCORE</small><strong>{numberScore.toLocaleString()}</strong></div><div><small>BEST THIS SESSION</small><strong>{numberBest.toLocaleString()}</strong></div></div>
