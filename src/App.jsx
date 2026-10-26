@@ -159,8 +159,8 @@ export default function App() {
   function steerGrinSnake(next) {
     const opposite={up:'down',down:'up',left:'right',right:'left'};
     if(snakeRoomCode&&snakeRoomRole==='guest'){
-      if(next!==opposite[snakeOpponentDirectionRef.current]){
-        snakeOpponentDirectionRef.current=next;setSnakeOpponentDirection(next);
+      if(next!==opposite[snakeDirectionRef.current]){
+        snakeDirectionRef.current=next;setSnakeDirection(next);
         snakeChannelRef.current?.send({type:'broadcast',event:'snake-direction',payload:{room:snakeRoomCode,player:'guest',direction:next}});
       }
       return;
@@ -1783,7 +1783,7 @@ export default function App() {
       <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
     </> : selectedGrinGame === 'snake' ? <>
       <div className="feed-head"><div><h2>Snake</h2><p>{snakeRoomCode ? 'Snake Arena · Room '+snakeRoomCode+' · '+(snakeRoomRole==='host'?'You are hosting':'You are a challenger') : 'Eat the glowing fruit, grow longer, and avoid the walls and your own tail.'}</p></div><Trophy size={25}/></div>
-      <div className="snake-score">Score <strong>{snakeScore}</strong>{snakeRoomCode&&<span> · {snakeRoomRole==='host'?'Host':'Challenger'}</span>}</div>
+      <div className="snake-score">{snakeRoomCode ? <><span>You <strong>{snakeScore}</strong></span><span> · Opponent <strong>{snakeOpponentScore}</strong></span><span> · {snakeRoomRole==='host'?'Host':'Challenger'}</span></> : <>Score <strong>{snakeScore}</strong></>}</div>
       <div className="profile-form">
         {!snakeRoomCode ? <>
           <button type="button" className="primary" onClick={createSnakeRoom}>Create Snake Arena</button>
@@ -1794,8 +1794,8 @@ export default function App() {
           {snakeRoomRole==='host'&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Arena':'Start Arena'}</button>}
         </>}
       </div>
-      <div className="grin-snake-board" role="img" aria-label={'Snake game board. Score '+snakeScore+'. Swipe in a direction to steer.'} onTouchStart={handleSnakeSwipeStart} onTouchEnd={handleSnakeSwipeEnd}>
-        {Array.from({length:192},(_,index)=><span key={index} className={'snake-cell'+(snakeBody.includes(index)?' snake-body':'')+(snakeBody[0]===index?' snake-head':'')+(snakeFood===index?' snake-food':'')} />)}
+      <div className="grin-snake-board" role="img" aria-label={'Snake game board. Your score '+snakeScore+'. Swipe in a direction to steer.'} onTouchStart={handleSnakeSwipeStart} onTouchEnd={handleSnakeSwipeEnd}>
+        {Array.from({length:192},(_,index)=><span key={index} className={'snake-cell'+(snakeBody.includes(index)?' snake-body':'')+(snakeBody[0]===index?' snake-head':'')+(snakeRoomCode&&snakeOpponentBody.includes(index)?' snake-rival-body':'')+(snakeRoomCode&&snakeOpponentBody[0]===index?' snake-rival-head':'')+(snakeFood===index?' snake-food':'')} />)}
       </div>
       <p className="game-turn-status" aria-live="polite">{snakeNotice}</p>
       <div className="card-actions">{!snakeRoomCode&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button>}{(!snakeRoomCode||snakeRoomRole==='host')&&<button type="button" className="secondary-btn" onClick={()=>{setSnakeRunning(false);setSnakeNotice('Game paused.');if(snakeRoomCode&&snakeChannelRef.current)snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:false,score:snakeScoreRef.current,notice:'Host paused the arena.'}});}}>Pause</button>}</div>
