@@ -2035,7 +2035,16 @@ export default function App() {
       <button type="button" className={selectedGrinGame === '2048' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('2048')}>2048</button>
       <button type="button" className={selectedGrinGame === 'connect4' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('connect4')}>Connect Four</button>
     </div>
-    {selectedGrinGame === '2048' ? <>
+    {selectedGrinGame === 'connect4' ? <>
+      <div className="feed-head"><div><h2>Connect Four</h2><p>Drop four discs in a row horizontally, vertically, or diagonally against GRIN Bot.</p></div><Trophy size={25}/></div>
+      <div className="connect-four-board" role="group" aria-label="Connect Four board">
+        {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
+        {connectFourBoard.map((cell,index)=><div key={index} className={'connect-four-cell'+(cell?' '+(cell==='R'?'disc-red':'disc-yellow'):'')} role="img" aria-label={cell==='R'?'Red disc':cell==='Y'?'Yellow disc':'Empty space'} />)}
+      </div>
+      <p className="game-turn-status" aria-live="polite">{connectFourNotice}</p>
+      <p className="connect-four-legend"><span><i className="disc-red"/> You</span><span><i className="disc-yellow"/> GRIN Bot</span></p>
+      <div className="card-actions"><button type="button" className="primary" onClick={resetConnectFour}>New round</button></div>
+    </> : selectedGrinGame === '2048' ? <>
       <div className="feed-head"><div><h2>2048</h2><p>Slide the tiles, merge matching numbers, and reach 2048.</p></div><Trophy size={25}/></div>
       <div className="number2048-scores"><span>Score <strong>{numberScore}</strong></span><span>Best this session <strong>{numberBest}</strong></span></div>
       <div className="number2048-board" role="group" aria-label="2048 number puzzle" tabIndex={0} onKeyDown={e=>{const dirs={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down'};if(dirs[e.key]){e.preventDefault();move2048(dirs[e.key]);}}}>
