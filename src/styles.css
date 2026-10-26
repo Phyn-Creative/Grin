@@ -2621,6 +2621,23 @@ button:active { transform: translateY(1px); }
 .number2048-controls{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px auto}.number2048-controls>div{display:flex;gap:6px}.number2048-controls button{min-width:48px;min-height:42px;font-size:20px}
 
 
+/* GRIN Football Penalty Shootout */
+.penalty-scoreboard{display:flex;align-items:center;justify-content:center;gap:clamp(18px,7vw,52px);margin:10px auto 6px;text-align:center}
+.penalty-scoreboard>div:not(.penalty-score-divider){display:flex;flex-direction:column;gap:4px;min-width:88px}
+.penalty-scoreboard span{font-size:13px;color:var(--muted,#68786e)}
+.penalty-scoreboard strong{font-size:clamp(30px,8vw,42px);line-height:1.1;color:var(--text,#173528)}
+.penalty-score-divider{font-size:12px;font-weight:800;opacity:.6}
+.penalty-round-label{text-align:center;font-weight:750;margin:8px 0;color:var(--text,#173528)}
+.penalty-goal{position:relative;width:min(100%,340px);height:140px;margin:14px auto 18px;border:7px solid #e8e9e7;border-bottom:0;border-radius:12px 12px 0 0;background:repeating-linear-gradient(0deg,transparent 0 17px,rgba(23,74,50,.12) 18px 19px),repeating-linear-gradient(90deg,transparent 0 25px,rgba(23,74,50,.12) 26px 27px),linear-gradient(#d8f0df,#eef8f0);box-shadow:0 4px 0 #b8c5bc inset}
+.penalty-net{height:100%;display:flex;align-items:center;justify-content:center;font-size:76px;opacity:.8}
+.penalty-ball{position:absolute;bottom:-18px;left:calc(50% - 17px);font-size:31px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.18))}
+.penalty-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:min(100%,440px);margin:12px auto}
+.penalty-directions button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:76px;padding:8px 4px}
+.penalty-directions button span{font-size:23px;font-weight:800}
+.penalty-directions button:disabled{opacity:.5}
+[data-grin-theme="dark"] .penalty-goal{background:repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,255,255,.12) 18px 19px),repeating-linear-gradient(90deg,transparent 0 25px,rgba(255,255,255,.12) 26px 27px),linear-gradient(#1e3928,#263d2f);border-color:#bac8be}
+@media(max-width:420px){.penalty-goal{height:115px}.penalty-directions{gap:6px}.penalty-directions button{font-size:12px;min-height:70px}}
+
 /* GRIN Connect Four */
 .connect-four-board{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(3px,1vw,7px);width:min(100%,490px);margin:10px auto;padding:clamp(6px,2vw,12px);background:#1767a3;border:1px solid #0f5489;border-radius:18px;box-shadow:0 8px 22px rgba(14,68,108,.16)}
 .connect-four-drop{min-width:0;aspect-ratio:1;border:0;border-radius:50%;background:#e8f3fa;color:#1767a3;font-size:clamp(14px,4vw,23px);font-weight:800;cursor:pointer}
