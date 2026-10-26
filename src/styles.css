@@ -2606,3 +2606,8 @@ button:active { transform: translateY(1px); }
 .grin-bot-difficulty label{font-weight:650}
 .grin-bot-difficulty select{width:100%;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--border-color,rgba(128,128,128,.3));background:var(--card-bg,#fff);color:inherit;font:inherit}
 .grin-bot-difficulty small{line-height:1.45;opacity:.78}
+
+
+.grin-memory-difficulty{margin:14px 0 18px}
+.memory-game-board:has(.memory-card:nth-child(14)){grid-template-columns:repeat(4,minmax(0,1fr))}
+.memory-game-board:has(.memory-card:nth-child(16)){grid-template-columns:repeat(4,minmax(0,1fr))}
