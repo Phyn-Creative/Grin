@@ -219,7 +219,6 @@ export default function App() {
   const memoryMismatchTimerRef=useRef(null);
   const memoryStateRef=useRef({});
   const [rpsChoice, setRpsChoice] = useState('');
-  const [rpsBotThinking, setRpsBotThinking] = useState(false);
   const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
   const [rpsScore, setRpsScore] = useState({wins:0,draws:0,losses:0});
   const [rpsRoomCode,setRpsRoomCode]=useState('');
@@ -803,15 +802,13 @@ export default function App() {
     const bot=options[Math.floor(Math.random()*options.length)];
     const result=choice===bot?'draw':((choice==='rock'&&bot==='scissors')||(choice==='paper'&&bot==='rock')||(choice==='scissors'&&bot==='paper'))?'win':'loss';
     setRpsChoice(choice);
-    setRpsBotThinking(true);
     setRpsResult('🤔 GRIN Bot is thinking…');
     window.setTimeout(()=>{
-      setRpsBotThinking(false);
       setRpsResult('You chose '+choice+' · GRIN Bot chose '+bot+'. '+(result==='draw'?'It’s a draw!':result==='win'?'You win this round!':'GRIN Bot wins this round.'));
       setRpsScore(s=>({...s,wins:s.wins+(result==='win'?1:0),draws:s.draws+(result==='draw'?1:0),losses:s.losses+(result==='loss'?1:0)}));
     },1800);
   }
-  function resetRockPaperScissors() { setRpsBotThinking(false); setRpsChoice(''); setRpsResult('Choose rock, paper or scissors to play against GRIN Bot.'); setRpsScore({wins:0,draws:0,losses:0}); }
+  function resetRockPaperScissors() { setRpsChoice(''); setRpsResult('Choose rock, paper or scissors to play against GRIN Bot.'); setRpsScore({wins:0,draws:0,losses:0}); }
   function resetRpsMatch(){setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsRoundWins({you:0,opponent:0});setRpsResult('New match started. Choose your move.');}
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
