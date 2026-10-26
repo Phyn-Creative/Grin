@@ -17,18 +17,21 @@ function Penalty3D({ animation, result, phase }) {
     scene.background = new THREE.Color('#111b27');
     scene.fog = new THREE.Fog('#111b27', 22, 48);
     const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 100);
-    camera.position.set(0, 4.2, 13.5);
-    camera.lookAt(0, 1.2, -2.5);
+    camera.position.set(0, 3.55, 11.8);
+    camera.lookAt(0, 1.25, -2.9);
     try { renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }); }
     catch (e) { host.innerHTML = '<div class="penalty-3d-fallback">3D graphics are unavailable in this browser. Try opening GRIN in Chrome.</div>'; return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.setSize(host.clientWidth || 360, host.clientHeight || 360);
     host.appendChild(renderer.domElement);
-    scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x183323, 2.1));
+    scene.add(new THREE.HemisphereLight(0xe8f2ff, 0x183323, 2.35));
     const sun = new THREE.DirectionalLight(0xfff1d2, 3);
-    sun.position.set(-5, 11, 8); sun.castShadow = true; sun.shadow.mapSize.set(512,512); scene.add(sun);
+    sun.position.set(-5, 11, 8); sun.castShadow = true; sun.shadow.mapSize.set(768,768); scene.add(sun);
     const fill = new THREE.DirectionalLight(0x88baff, 1.5); fill.position.set(7,6,-8); scene.add(fill);
     const material = (color, roughness=0.8) => new THREE.MeshStandardMaterial({color, roughness});
     const white = material('#e5ebe7',0.45), net = new THREE.MeshStandardMaterial({color:'#dce7e2',transparent:true,opacity:0.28});
@@ -2179,11 +2182,17 @@ export default function App() {
       <p className="penalty-round-label">{penaltyDone ? 'Shootout complete' : 'Round '+penaltyRound+' of 5'} · {penaltyPhase === 'shoot' ? 'Your penalty' : 'Defend the goal'}</p>
       <Penalty3D animation={penaltyAnimation} result={penaltyLastResult} phase={penaltyPhase} />
       <p className="game-turn-status" aria-live="polite">{penaltyNotice}</p>
+      <div className="penalty-control-heading">
+        <span className="penalty-control-dot" />
+        <strong>{penaltyPhase === 'shoot' ? 'CHOOSE YOUR SHOT' : 'READ THE STRIKER'}</strong>
+        <span className="penalty-control-tip">Tap a lane</span>
+      </div>
       <div className="penalty-directions" role="group" aria-label={penaltyPhase === 'shoot' ? 'Choose where to shoot' : 'Choose where to dive'}>
-        {['left','center','right'].map(direction=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
-          <span>{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction === 'left' ? 'LEFT CORNER' : direction === 'center' ? 'STRAIGHT DOWN' : 'RIGHT CORNER'}</small>
+        {['left','center','right'].map((direction,index)=><button key={direction} type="button" className={'penalty-action-btn '+(penaltyPhase === 'shoot' ? 'shoot-action' : 'dive-action')} onClick={()=>playPenaltyDirection(direction)} disabled={penaltyDone || penaltyAnimation !== 'idle'}>
+          <span className="penalty-control-arrow">{direction === 'left' ? '↖' : direction === 'center' ? '↑' : '↗'}</span><strong>{penaltyPhase === 'shoot' ? 'SHOOT' : 'DIVE'}</strong><small>{direction === 'left' ? 'LEFT LANE' : direction === 'center' ? 'CENTRE' : 'RIGHT LANE'}</small><em>{['01','02','03'][index]}</em>
         </button>)}
       </div>
+      <p className="penalty-control-footnote">{penaltyAnimation !== 'idle' ? 'Play in progress…' : penaltyDone ? 'Shootout finished — run it back?' : penaltyPhase === 'shoot' ? 'Pick a corner. The keeper will try to read you.' : 'Guess the shot direction and get your gloves to it.'}</p>
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
     </> : selectedGrinGame === 'connect4' ? <>
       <div className="feed-head"><div><h2>Connect Four</h2><p>Drop four discs in a row horizontally, vertically, or diagonally against GRIN Bot.</p></div><Trophy size={25}/></div>
