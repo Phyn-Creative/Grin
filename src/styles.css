@@ -2610,3 +2610,12 @@ button:active { transform: translateY(1px); }
 
 .grin-memory-difficulty{margin:14px 0 18px}
 .memory-game-board:has(.memory-card:nth-child(20)),.memory-game-board:has(.memory-card:nth-child(32)){grid-template-columns:repeat(4,minmax(0,1fr))}
+
+/* GRIN 2048 */
+.number2048-scores{display:flex;justify-content:center;gap:22px;flex-wrap:wrap;margin:12px 0;font-size:14px}
+.number2048-scores strong{font-size:18px;margin-left:5px}
+.number2048-board{width:min(100%,380px);aspect-ratio:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;padding:8px;margin:0 auto;background:var(--border,#d7dce2);border-radius:14px;outline-offset:4px;touch-action:manipulation}
+.number2048-tile{display:flex;align-items:center;justify-content:center;min-width:0;aspect-ratio:1;border-radius:9px;background:var(--card,#f4f5f7);font-size:clamp(18px,5vw,32px);font-weight:800;color:var(--text,#20242a);font-variant-numeric:tabular-nums}
+.number2048-tile.has-value{background:#e9e1d3}
+.number2048-tile.tile-4{background:#e4d6b8}.number2048-tile.tile-8{background:#edbd83;color:#392719}.number2048-tile.tile-16{background:#efa36d;color:#392719}.number2048-tile.tile-32{background:#e98261;color:#fff}.number2048-tile.tile-64{background:#d95b48;color:#fff}.number2048-tile.tile-128,.number2048-tile.tile-256,.number2048-tile.tile-512{background:#d8bd62;color:#28251b}.number2048-tile.tile-1024,.number2048-tile.tile-2048{background:#bda244;color:#fff;font-size:clamp(16px,4.2vw,28px)}
+.number2048-controls{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px auto}.number2048-controls>div{display:flex;gap:6px}.number2048-controls button{min-width:48px;min-height:42px;font-size:20px}
