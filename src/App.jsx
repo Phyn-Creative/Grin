@@ -76,9 +76,9 @@ function Penalty3D({ animation, result, phase }) {
     const a=animation.match(/shot-(left|center|right)-(goal|saved)-keeper-(left|center|right)/);
     const b=animation.match(/keeper-(left|center|right)-(save|goal)-shot-(left|center|right)/);
     const match=a||b;if(!match)return;
-    const target=match[1],saved=a?match[2]==='saved':match[2]==='save';
+    const target=a?match[1]:match[3],keeperDirection=a?match[4]:match[1],saved=a?match[2]==='saved':match[2]==='save';
     const start=performance.now(),duration=1050;let frame=0;
-    const tick=now=>{const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,2.4);const x=target==='left'?-2.45:target==='right'?2.45:0;const y=saved?1.45:(target==='center'?2.05:1.85);ball.position.set(x*e,.3+(y-.3)*e+Math.sin(t*Math.PI)*1.1,5+(-10.65)*e);ball.rotation.x=e*7;ball.rotation.z=e*4;shadow.position.set(ball.position.x,.025,ball.position.z);shadow.scale.setScalar(1-e*.62);if(saved||b){const d=target==='left'?-1:target==='right'?1:0;keeper.position.x=d*1.75*e;keeper.rotation.z=-d*.8*e;keeper.rotation.x=-.28*e;keeper.scale.set(1+.12*e,1-.1*e,1);}if(t<1)frame=requestAnimationFrame(tick);};
+    const tick=now=>{const t=Math.min(1,(now-start)/duration),e=1-Math.pow(1-t,2.4);const x=target==='left'?-2.45:target==='right'?2.45:0;const y=saved?1.45:(target==='center'?2.05:1.85);ball.position.set(x*e,.3+(y-.3)*e+Math.sin(t*Math.PI)*1.1,5+(-10.65)*e);ball.rotation.x=e*7;ball.rotation.z=e*4;shadow.position.set(ball.position.x,.025,ball.position.z);shadow.scale.setScalar(1-e*.62);if(saved||b){const d=keeperDirection==='left'?-1:keeperDirection==='right'?1:0;keeper.position.x=d*1.75*e;keeper.rotation.z=-d*.8*e;keeper.rotation.x=-.28*e;keeper.scale.set(1+.12*e,1-.1*e,1);}if(t<1)frame=requestAnimationFrame(tick);};
     frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
   },[animation]);
   return <div className="penalty-3d-shell"><div className="penalty-3d-hud"><span>GRIN 3D FOOTBALL</span><span>{phase==='shoot'?'ATTACK':'GOALKEEPER'}</span></div><div className="penalty-3d-canvas" ref={hostRef}/><div className={'penalty-3d-result'+(animation!=='idle'?' is-visible':'')}>{animation!=='idle'?result:''}</div><div className="penalty-3d-hint">{phase==='shoot'?'Pick your shot placement':'Read the shot and dive'}</div></div>;
