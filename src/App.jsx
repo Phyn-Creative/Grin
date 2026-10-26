@@ -37,6 +37,10 @@ export default function App() {
   const [snakeRunning, setSnakeRunning] = useState(false);
   const [snakeScore, setSnakeScore] = useState(0);
   const [snakeNotice, setSnakeNotice] = useState('Press Start Snake to play.');
+  const [snakeRoomCode, setSnakeRoomCode] = useState('');
+  const [snakeRoomRole, setSnakeRoomRole] = useState('');
+  const [snakeJoinCode, setSnakeJoinCode] = useState('');
+  const snakeChannelRef = useRef(null);
   const snakeBodyRef = useRef(snakeBody);
   const snakeFoodRef = useRef(snakeFood);
   const snakeDirectionRef = useRef(snakeDirection);
@@ -51,7 +55,7 @@ export default function App() {
   snakeDirectionRef.current = snakeDirection;
   snakeScoreRef.current = snakeScore;
   useEffect(() => {
-    if (active !== 'games' || selectedGrinGame !== 'snake' || !snakeRunning) return;
+    if (active !== 'games' || selectedGrinGame !== 'snake' || !snakeRunning || (snakeRoomCode && snakeRoomRole !== 'host')) return;
     const timer = window.setInterval(() => {
       const body = snakeBodyRef.current;
       const head = body[0];
@@ -67,6 +71,7 @@ export default function App() {
       if (nextHead < 0 || occupied.includes(nextHead)) {
         setSnakeRunning(false);
         setSnakeNotice('Game over! Score: ' + snakeScoreRef.current + '. Press Play again to restart.');
+        if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body,food:snakeFoodRef.current,direction,running:false,score:snakeScoreRef.current,notice:'Game over! Host snake crashed.'}});
         return;
       }
       const nextBody = [nextHead, ...body];
@@ -83,9 +88,10 @@ export default function App() {
         setSnakeFood(nextFood);
         setSnakeNotice('Nice! Keep going.');
       }
+      if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:nextBody,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:true,score:snakeScoreRef.current,notice:eating?'Nice! Keep going.':'Multiplayer arena is live.'}});
     }, 145);
     return () => window.clearInterval(timer);
-  }, [active, selectedGrinGame, snakeRunning]);
+  }, [active, selectedGrinGame, snakeRunning, snakeRoomCode, snakeRoomRole]);
 
   useEffect(() => {
     if (active !== 'games' || selectedGrinGame !== 'snake') return;
@@ -114,15 +120,93 @@ export default function App() {
     snakeDirectionRef.current = 'right';
     snakeScoreRef.current = 0;
     setSnakeBody(body); setSnakeFood(food); setSnakeDirection('right');
-    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice('Use the arrow keys or on-screen controls.');
+    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice(snakeRoomCode ? 'Arena started! Host controls the game clock.' : 'Use the arrow keys or on-screen controls.');
+    if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body,food,direction:'right',running:true,score:0,notice:'Arena started!'} });
   }
   function steerGrinSnake(next) {
+    if (snakeRoomCode && snakeRoomRole === 'guest') {
+      if (snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-direction',payload:{room:snakeRoomCode,direction:next}});
+      return;
+    }
     const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' };
     if (next !== opposite[snakeDirectionRef.current]) {
       snakeDirectionRef.current = next;
       setSnakeDirection(next);
     }
   }
+
+  function createSnakeRoom() {
+    const code = crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+    setSnakeRoomCode(code); setSnakeRoomRole('host'); setSnakeJoinCode('');
+    setSelectedGrinGame('snake'); setActive('games'); setSnakeRunning(false);
+    setSnakeNotice('Snake Arena room created. Share the room link, then press Start Arena.');
+    const params = new URLSearchParams(window.location.search); params.set('game','snake'); params.set('room',code);
+    window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+  function joinSnakeRoom() {
+    const code = snakeJoinCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{6,12}$/.test(code)) { setSnakeNotice('Enter a valid 6–12 character room code.'); return; }
+    setSnakeRoomCode(code); setSnakeRoomRole('guest'); setSelectedGrinGame('snake'); setActive('games');
+    setSnakeRunning(false); setSnakeNotice('Joining Snake Arena…');
+    const params = new URLSearchParams(window.location.search); params.set('game','snake'); params.set('room',code);
+    window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+  function exitSnakeRoom() {
+    if (snakeChannelRef.current) { supabase.removeChannel(snakeChannelRef.current); snakeChannelRef.current = null; }
+    setSnakeRoomCode(''); setSnakeRoomRole(''); setSnakeJoinCode(''); setSnakeRunning(false);
+    setSnakeNotice('You left Snake Arena. You can play solo or join another room.');
+    const params = new URLSearchParams(window.location.search); params.delete('game'); params.delete('room');
+    const query = params.toString();
+    window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
+  }
+  async function copySnakeRoomLink() {
+    if (!snakeRoomCode) return;
+    const link = window.location.origin + window.location.pathname + '?game=snake&room=' + encodeURIComponent(snakeRoomCode);
+    try { await navigator.clipboard.writeText(link); setSnakeNotice('Snake Arena link copied. Share it with your friend.'); }
+    catch { window.prompt('Copy your Snake Arena link:',link); }
+  }
+  useEffect(() => {
+    if (!snakeRoomCode || !session?.user?.id || selectedGrinGame !== 'snake') return;
+    const room = snakeRoomCode;
+    const channel = supabase.channel('grin-snake-' + room,{config:{broadcast:{self:false}}});
+    snakeChannelRef.current = channel;
+    channel.on('broadcast',{event:'snake-state'},({payload}) => {
+      if (payload?.room !== room || !Array.isArray(payload.body)) return;
+      if (snakeRoomRole === 'guest') {
+        snakeBodyRef.current = payload.body; snakeFoodRef.current = payload.food;
+        snakeDirectionRef.current = payload.direction || 'right'; snakeScoreRef.current = payload.score || 0;
+        setSnakeBody(payload.body); setSnakeFood(payload.food); setSnakeDirection(payload.direction || 'right');
+        setSnakeScore(payload.score || 0); setSnakeRunning(!!payload.running);
+        setSnakeNotice(payload.notice || 'Snake Arena is live.');
+      }
+    }).on('broadcast',{event:'snake-direction'},({payload}) => {
+      if (snakeRoomRole === 'host' && payload?.room === room && ['up','down','left','right'].includes(payload.direction)) {
+        const opposite = {up:'down',down:'up',left:'right',right:'left'};
+        if (payload.direction !== opposite[snakeDirectionRef.current]) {
+          snakeDirectionRef.current = payload.direction; setSnakeDirection(payload.direction);
+        }
+      }
+    }).on('broadcast',{event:'snake-request-state'},() => {
+      if (snakeRoomRole === 'host') channel.send({type:'broadcast',event:'snake-state',payload:{room,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:snakeRunning,score:snakeScoreRef.current,notice:'Connected to Snake Arena.'}});
+    }).subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        setSnakeNotice(snakeRoomRole === 'host' ? 'Room ready. Share the link and start the arena.' : 'Connected. Waiting for the host to start the arena.');
+        if (snakeRoomRole === 'guest') channel.send({type:'broadcast',event:'snake-request-state',payload:{room}});
+        else channel.send({type:'broadcast',event:'snake-state',payload:{room,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:snakeRunning,score:snakeScoreRef.current,notice:'Room ready.'}});
+      }
+    });
+    return () => { supabase.removeChannel(channel); if (snakeChannelRef.current === channel) snakeChannelRef.current = null; };
+  },[snakeRoomCode, snakeRoomRole, session?.user?.id, selectedGrinGame]);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('game') === 'snake' && params.get('room')) {
+      const code = (params.get('room') || '').toUpperCase();
+      if (/^[A-Z0-9]{6,12}$/.test(code)) {
+        setSnakeRoomCode(code); setSnakeRoomRole('guest'); setSelectedGrinGame('snake'); setActive('games');
+        setSnakeNotice('You have been invited to Snake Arena. Connecting…');
+      }
+    }
+  },[]);
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [ownPostMenuId, setOwnPostMenuId] = useState(null);
@@ -1642,13 +1726,23 @@ export default function App() {
       <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button>{gameRoomCode&&<button type="button" className="secondary-btn" onClick={exitGrinGameRoom}>Exit room</button>}</div>
       <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
     </> : <>
-      <div className="feed-head"><div><h2>Snake</h2><p>Eat the glowing fruit, grow longer, and avoid the walls and your own tail.</p></div><Trophy size={25}/></div>
-      <div className="snake-score">Score <strong>{snakeScore}</strong></div>
+      <div className="feed-head"><div><h2>Snake</h2><p>{snakeRoomCode ? 'Snake Arena · Room '+snakeRoomCode+' · '+(snakeRoomRole==='host'?'You are hosting':'You are a challenger') : 'Eat the glowing fruit, grow longer, and avoid the walls and your own tail.'}</p></div><Trophy size={25}/></div>
+      <div className="snake-score">Score <strong>{snakeScore}</strong>{snakeRoomCode&&<span> · {snakeRoomRole==='host'?'Host':'Challenger'}</span>}</div>
+      <div className="profile-form">
+        {!snakeRoomCode ? <>
+          <button type="button" className="primary" onClick={createSnakeRoom}>Create Snake Arena</button>
+          <form onSubmit={e=>{e.preventDefault();joinSnakeRoom();}}><label>Join a Snake Arena</label><input value={snakeJoinCode} onChange={e=>setSnakeJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join Arena</button></form>
+        </> : <>
+          <p>Room code: <strong>{snakeRoomCode}</strong></p>
+          <div className="card-actions"><button type="button" className="secondary-btn" onClick={copySnakeRoomLink}>Copy Arena link</button><button type="button" className="secondary-btn" onClick={exitSnakeRoom}>Exit room</button></div>
+          {snakeRoomRole==='host'&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Arena':'Start Arena'}</button>}
+        </>}
+      </div>
       <div className="grin-snake-board" role="img" aria-label={'Snake game board. Score '+snakeScore}>
         {Array.from({length:192},(_,index)=><span key={index} className={'snake-cell'+(snakeBody.includes(index)?' snake-body':'')+(snakeBody[0]===index?' snake-head':'')+(snakeFood===index?' snake-food':'')} />)}
       </div>
       <p className="game-turn-status" aria-live="polite">{snakeNotice}</p>
-      <div className="card-actions"><button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button><button type="button" className="secondary-btn" onClick={()=>setSnakeRunning(false)}>Pause</button></div>
+      <div className="card-actions">{!snakeRoomCode&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button>}{(!snakeRoomCode||snakeRoomRole==='host')&&<button type="button" className="secondary-btn" onClick={()=>{setSnakeRunning(false);setSnakeNotice('Game paused.');if(snakeRoomCode&&snakeChannelRef.current)snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:false,score:snakeScoreRef.current,notice:'Host paused the arena.'}});}}>Pause</button>}</div>
       <div className="snake-controls" aria-label="Snake direction controls">
         <span />
         <button type="button" aria-label="Move up" onClick={()=>steerGrinSnake('up')}>↑</button>
@@ -1659,7 +1753,7 @@ export default function App() {
       </div>
     </>}
   </section>
-  <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online room, then copy its link or share it directly from your device.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
+  <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online Tic-Tac-Toe or Snake room, then copy its invitation link to share with friends.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
     <label>Invite through a conversation</label><select value={gameInviteTarget} onChange={e=>{setGameInviteTarget(e.target.value);if(e.target.value)setGameInviteCommunity('');}}><option value="">Choose a chat or group…</option>{chats.filter(chat=>chat.id!=='welcome').map(chat=><option key={chat.id} value={chat.id}>{chat.name}</option>)}</select>
     <label>Or invite a community</label><select value={gameInviteCommunity} onChange={e=>{setGameInviteCommunity(e.target.value);if(e.target.value)setGameInviteTarget('');}}><option value="">Choose a community…</option>{communities.filter(item=>communityMembers[item.id]?.joined).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
     <button type="button" className="primary" onClick={sendGrinGameInvite}>Send game invitation</button>
