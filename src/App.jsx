@@ -53,6 +53,13 @@ export default function App() {
   const [memoryMatched, setMemoryMatched] = useState([]);
   const [memoryMoves, setMemoryMoves] = useState(0);
   const [memoryNotice, setMemoryNotice] = useState('Find all six matching pairs.');
+  const [memoryRoomCode,setMemoryRoomCode]=useState('');
+  const [memoryRoomRole,setMemoryRoomRole]=useState('');
+  const [memoryJoinCode,setMemoryJoinCode]=useState('');
+  const [memoryTurn,setMemoryTurn]=useState('host');
+  const [memoryScores,setMemoryScores]=useState({host:0,guest:0});
+  const memoryChannelRef=useRef(null);
+  const memoryPendingMismatchRef=useRef(false);
   const [rpsChoice, setRpsChoice] = useState('');
   const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
   const [rpsScore, setRpsScore] = useState({wins:0,draws:0,losses:0});
@@ -245,6 +252,20 @@ export default function App() {
   },[snakeRoomCode,session?.user?.id,selectedGrinGame,snakeRoomRole]);
 
   useEffect(()=>{
+    if(!memoryRoomCode||!session?.user?.id||selectedGrinGame!=='memory')return;
+    const room=memoryRoomCode;
+    const channel=supabase.channel('grin-memory-'+room,{config:{broadcast:{self:false}}});memoryChannelRef.current=channel;
+    channel.on('broadcast',{event:'memory-state'},({payload})=>{
+      if(payload?.room!==room||!Array.isArray(payload.cards)||!Array.isArray(payload.flipped)||!Array.isArray(payload.matched))return;
+      setMemoryCards(payload.cards);setMemoryFlipped(payload.flipped);setMemoryMatched(payload.matched);setMemoryMoves(payload.moves||0);setMemoryScores(payload.scores||{host:0,guest:0});setMemoryTurn(payload.turn||'host');setMemoryNotice(payload.notice||'Memory Match is live.');
+      if(snakeRoomRole==='host'&&payload.flipped.length===2&&payload.cards[payload.flipped[0]]?.emoji!==payload.cards[payload.flipped[1]]?.emoji)scheduleMemoryMismatchClear(payload);
+    }).on('broadcast',{event:'memory-request-state'},()=>{
+      if(memoryRoomRole==='host')channel.send({type:'broadcast',event:'memory-state',payload:{room,cards:memoryCards,flipped:memoryFlipped,matched:memoryMatched,moves:memoryMoves,scores:memoryScores,turn:memoryTurn,notice:memoryNotice}});
+    }).subscribe(status=>{if(status==='SUBSCRIBED')channel.send({type:'broadcast',event:'memory-request-state',payload:{room}});});
+    return()=>{if(memoryChannelRef.current===channel)memoryChannelRef.current=null;supabase.removeChannel(channel);};
+  },[memoryRoomCode,memoryRoomRole,session?.user?.id,selectedGrinGame]);
+
+  useEffect(()=>{
     if(!rpsRoomCode||!session?.user?.id||selectedGrinGame!=='rps')return;
     const room=rpsRoomCode;
     const channel=supabase.channel('grin-rps-'+room,{config:{broadcast:{self:false}}});rpsChannelRef.current=channel;
@@ -271,15 +292,60 @@ export default function App() {
     setMemoryFlipped([]); setMemoryMatched([]); setMemoryMoves(0); setMemoryNotice('Find all six matching pairs.');
   }
   function flipMemoryCard(index) {
-    if (memoryFlipped.includes(index) || memoryMatched.includes(index) || memoryFlipped.length >= 2) return;
-    const next=[...memoryFlipped,index]; setMemoryFlipped(next);
-    if (next.length===2) {
-      setMemoryMoves(m=>m+1);
-      if (memoryCards[next[0]].emoji===memoryCards[next[1]].emoji) {
-        const matched=[...memoryMatched,...next]; setMemoryMatched(matched); setMemoryFlipped([]);
-        setMemoryNotice(matched.length===memoryCards.length?'You matched every pair! 🎉':'Match found! Keep going.');
-      } else { setMemoryNotice('Not a match — try another pair.'); window.setTimeout(()=>setMemoryFlipped([]),700); }
+    if(memoryRoomCode&&memoryTurn!==memoryRoomRole)return;
+    if(memoryFlipped.includes(index)||memoryMatched.includes(index)||memoryFlipped.length>=2)return;
+    const next=[...memoryFlipped,index];let matched=memoryMatched.slice(),scores={...memoryScores},turn=memoryTurn,moves=memoryMoves+ (next.length===2?1:0);
+    let notice='Choose another card.';
+    if(next.length===2){
+      if(memoryCards[next[0]].emoji===memoryCards[next[1]].emoji){
+        matched=[...matched,...next];scores[memoryRoomCode?memoryRoomRole:'host']++;
+        notice=matched.length===memoryCards.length?'All pairs found! 🎉':'Match found! Take another turn.';
+        setMemoryFlipped([]);
+      }else{
+        notice='Not a match.';
+        if(memoryRoomCode){turn=memoryRoomRole==='host'?'guest':'host';}
+      }
     }
+    setMemoryFlipped(next.length===2&&memoryCards[next[0]].emoji===memoryCards[next[1]].emoji?[]:next);
+    setMemoryMatched(matched);setMemoryMoves(moves);setMemoryScores(scores);setMemoryTurn(turn);setMemoryNotice(notice);
+    const snapshot={room:memoryRoomCode,cards:memoryCards,flipped:next.length===2&&memoryCards[next[0]].emoji===memoryCards[next[1]].emoji?[]:next,matched,moves,scores,turn,notice};
+    if(memoryRoomCode)memoryChannelRef.current?.send({type:'broadcast',event:'memory-state',payload:snapshot});
+    if(next.length===2&&memoryCards[next[0]].emoji!==memoryCards[next[1]].emoji&&memoryRoomCode&&memoryRoomRole==='host')scheduleMemoryMismatchClear(snapshot);
+    if(next.length===2&&memoryCards[next[0]].emoji!==memoryCards[next[1]].emoji&&!memoryRoomCode)window.setTimeout(()=>setMemoryFlipped([]),700);
+  }
+  function scheduleMemoryMismatchClear(snapshot){
+    if(memoryPendingMismatchRef.current)return;
+    memoryPendingMismatchRef.current=true;
+    window.setTimeout(()=>{
+      const nextTurn=snapshot.turn;
+      const clean={...snapshot,flipped:[],turn:nextTurn,notice:'Next player’s turn.'};
+      setMemoryFlipped([]);setMemoryTurn(nextTurn);setMemoryNotice(clean.notice);
+      memoryChannelRef.current?.send({type:'broadcast',event:'memory-state',payload:clean});
+      memoryPendingMismatchRef.current=false;
+    },750);
+  }
+  function createMemoryRoom(){
+    const code=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+    setMemoryRoomCode(code);setMemoryRoomRole('host');setMemoryJoinCode('');setMemoryTurn('host');setMemoryScores({host:0,guest:0});
+    startMemoryGame();setSelectedGrinGame('memory');setActive('games');
+    const params=new URLSearchParams(window.location.search);params.set('game','memory');params.set('room',code);window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+    setMemoryNotice('Room created. Share the link and take turns finding pairs.');
+  }
+  function joinMemoryRoom(){
+    const code=memoryJoinCode.trim().toUpperCase();
+    if(!/^[A-Z0-9]{6,12}$/.test(code)){setMemoryNotice('Enter a valid 6–12 character room code.');return;}
+    setMemoryRoomCode(code);setMemoryRoomRole('guest');setSelectedGrinGame('memory');setActive('games');setMemoryNotice('Joining Memory Match…');
+    const params=new URLSearchParams(window.location.search);params.set('game','memory');params.set('room',code);window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+  }
+  function exitMemoryRoom(){
+    if(memoryChannelRef.current){supabase.removeChannel(memoryChannelRef.current);memoryChannelRef.current=null;}
+    setMemoryRoomCode('');setMemoryRoomRole('');setMemoryJoinCode('');setMemoryTurn('host');setMemoryScores({host:0,guest:0});
+    const params=new URLSearchParams(window.location.search);params.delete('game');params.delete('room');const query=params.toString();window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
+    setMemoryNotice('You left the room. Solo Memory Match is ready.');
+  }
+  async function copyMemoryRoomLink(){
+    if(!memoryRoomCode)return;const link=window.location.origin+window.location.pathname+'?game=memory&room='+encodeURIComponent(memoryRoomCode);
+    try{await navigator.clipboard.writeText(link);setMemoryNotice('Memory Match link copied.');}catch{window.prompt('Copy your Memory Match link:',link);}
   }
   function createRpsRoom(){
     const code=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
@@ -920,6 +986,10 @@ export default function App() {
   }
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
+    if(params.get('game')==='memory'&&params.get('room')){
+      const code=(params.get('room')||'').toUpperCase();
+      if(/^[A-Z0-9]{6,12}$/.test(code)){setMemoryRoomCode(code);setMemoryRoomRole('guest');setSelectedGrinGame('memory');setActive('games');setMemoryNotice('You have been invited to Memory Match.');}
+    }
     if(params.get('game')==='rps'&&params.get('room')){
       const code=(params.get('room')||'').toUpperCase();
       if(/^[A-Z0-9]{6,12}$/.test(code)){setRpsRoomCode(code);setRpsRoomRole('guest');setSelectedGrinGame('rps');setActive('games');setRpsResult('You have been invited to a Rock Paper Scissors match.');}
@@ -1863,10 +1933,11 @@ export default function App() {
       <div className="card-actions">{!snakeRoomCode&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button>}{(!snakeRoomCode||snakeRoomRole==='host')&&<button type="button" className="secondary-btn" onClick={()=>{setSnakeRunning(false);setSnakeNotice('Game paused.');if(snakeRoomCode&&snakeChannelRef.current)snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:false,score:snakeScoreRef.current,notice:'Host paused the arena.'}});}}>Pause</button>}</div>
       <p className="snake-control-hint">Mobile: swipe on the board to steer. Desktop: use arrow keys or W, A, S, D.</p>
     </> : selectedGrinGame === 'memory' ? <>
-      <div className="feed-head"><div><h2>Memory Match</h2><p>Find all six matching fruit pairs in as few moves as possible.</p></div><Trophy size={25}/></div>
-      <div className="memory-game-board" role="group" aria-label="Memory match cards">{memoryCards.map((card,index)=><button type="button" key={card.id} className={'memory-card'+(memoryFlipped.includes(index)||memoryMatched.includes(index)?' revealed':'')+(memoryMatched.includes(index)?' matched':'')} onClick={()=>flipMemoryCard(index)} disabled={memoryMatched.includes(index)||memoryFlipped.includes(index)||memoryFlipped.length>=2}>{memoryFlipped.includes(index)||memoryMatched.includes(index)?card.emoji:'?'}</button>)}</div>
-      <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/6</strong></p>
-      <div className="card-actions"><button type="button" className="primary" onClick={startMemoryGame}>Restart Memory Match</button></div>
+      <div className="feed-head"><div><h2>Memory Match</h2><p>{memoryRoomCode?'Online match · Room '+memoryRoomCode+' · '+(memoryRoomRole==='host'?'Host':'Challenger'):'Find pairs solo or take turns with a friend.'}</p></div><Trophy size={25}/></div>
+      {memoryRoomCode?<div className="profile-form"><p>Room code: <strong>{memoryRoomCode}</strong></p><p>Turn: <strong>{memoryTurn===memoryRoomRole?'Your turn':"Opponent's turn"}</strong> · You <strong>{memoryScores[memoryRoomRole]||0}</strong> pairs · Opponent <strong>{memoryScores[memoryRoomRole==='host'?'guest':'host']||0}</strong> pairs</p><div className="card-actions"><button type="button" className="secondary-btn" onClick={copyMemoryRoomLink}>Copy match link</button><button type="button" className="secondary-btn" onClick={exitMemoryRoom}>Exit room</button></div></div>:<div className="profile-form"><button type="button" className="primary" onClick={createMemoryRoom}>Create online match</button><form onSubmit={e=>{e.preventDefault();joinMemoryRoom();}}><label>Join a match</label><input value={memoryJoinCode} onChange={e=>setMemoryJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>}
+      <div className="memory-game-board" role="group" aria-label="Memory match cards">{memoryCards.map((card,index)=><button type="button" key={card.id} className={'memory-card'+(memoryFlipped.includes(index)||memoryMatched.includes(index)?' revealed':'')+(memoryMatched.includes(index)?' matched':'')} onClick={()=>flipMemoryCard(index)} disabled={memoryMatched.includes(index)||memoryFlipped.includes(index)||memoryFlipped.length>=2||(!!memoryRoomCode&&memoryTurn!==memoryRoomRole)}>{memoryFlipped.includes(index)||memoryMatched.includes(index)?card.emoji:'?'}</button>)}</div>
+      <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/6</strong>{memoryRoomCode?' · '+(memoryScores[memoryRoomRole]||0)+' points':''}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={startMemoryGame} disabled={!!memoryRoomCode&&memoryRoomRole!=='host'}>Restart Memory Match</button></div>
     </> : <>
       <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>{rpsRoomCode?'Online match · Room '+rpsRoomCode+' · '+(rpsRoomRole==='host'?'Host':'Challenger'):'Play quick rounds against GRIN Bot or challenge a friend.'}</p></div><Trophy size={25}/></div>
       {rpsRoomCode?<div className="profile-form"><p>Room code: <strong>{rpsRoomCode}</strong></p><div className="card-actions"><button type="button" className="secondary-btn" onClick={copyRpsRoomLink}>Copy match link</button><button type="button" className="secondary-btn" onClick={exitRpsRoom}>Exit room</button></div><p>Best of five: first to three wins takes the match.</p></div>:<div className="profile-form"><button type="button" className="primary" onClick={createRpsRoom}>Create online match</button><form onSubmit={e=>{e.preventDefault();joinRpsRoom();}}><label>Join a match</label><input value={rpsJoinCode} onChange={e=>setRpsJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>}
