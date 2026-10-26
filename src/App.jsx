@@ -298,7 +298,7 @@ export default function App() {
     if (!session) return;
     if (active === 'status') loadStories();
     if (active === 'saved') loadSavedPosts();
-    if (active === 'communities') loadCommunities();
+    if (active === 'communities' || active === 'games') loadCommunities();
     if (active === 'business') {
       loadBusinesses();
       loadBusinessData();
@@ -606,13 +606,15 @@ export default function App() {
     if(gameInviteTarget){
       const chat=chats.find(item=>item.id===gameInviteTarget);
       if(!chat||chat.id==='welcome'){setGameNotice('Choose a real conversation to send the invite.');return;}
-      const {error}=await supabase.from('grin_messages').insert({conversation_id:chat.id,sender_id:session.user.id,body});
-      if(error){setGameNotice('Could not send the game invite. Please try again.');return;}
+      const {data,error}=await supabase.from('grin_messages').insert({conversation_id:chat.id,sender_id:session.user.id,body}).select().single();
+      if(error||!data){console.error('GRIN game invite message failed',error);setGameNotice('Could not send the invite: '+(error?.message||'please try again.'));return;}
+      if(selected?.id===chat.id)setMessages(current=>current.some(item=>item.id===data.id)?current:[...current,data]);
+      setChats(current=>current.map(item=>item.id===chat.id?{...item,preview:body,lastMessageAt:data.created_at||new Date().toISOString()}:item));
       setGameNotice('Invitation sent to '+chat.name+'.');setGameInviteTarget('');return;
     }
     if(gameInviteCommunity){
       const {error}=await supabase.from('grin_community_posts').insert({community_id:gameInviteCommunity,author_id:session.user.id,body});
-      if(error){setGameNotice('Could not post the invitation. Make sure you belong to that community.');return;}
+      if(error){console.error('GRIN community game invite failed',error);setGameNotice('Could not post the invite: '+(error.message||'check that you belong to the community.'));return;}
       setGameNotice('Invitation posted to the selected community.');setGameInviteCommunity('');return;
     }
     setGameNotice('Choose a conversation or community to invite.');
