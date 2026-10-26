@@ -346,6 +346,10 @@ export default function App() {
     window.alert(name+' has been blocked. You can manage blocked accounts in Settings.');
     await loadBlockedUsers();
     setExploreResults(current=>({...current,people:current.people.filter(p=>p.id!==person.id)}));
+    setPeople(current=>current.filter(p=>p.id!==person.id));
+    setSuggestedPeople(current=>current.filter(p=>p.id!==person.id));
+    setSuggestedCreators(current=>current.filter(p=>p.id!==person.id));
+    setDirectoryPeople(current=>current.filter(p=>p.id!==person.id));
     setProfileView(null);
   }
 
