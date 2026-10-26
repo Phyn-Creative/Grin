@@ -228,7 +228,7 @@ export default function App() {
       if (memoryCards[next[0]].emoji===memoryCards[next[1]].emoji) {
         const matched=[...memoryMatched,...next]; setMemoryMatched(matched); setMemoryFlipped([]);
         setMemoryNotice(matched.length===memoryCards.length?'You matched every pair! 🎉':'Match found! Keep going.');
-      } else setMemoryNotice('Not a match — try another pair.');
+      } else { setMemoryNotice('Not a match — try another pair.'); window.setTimeout(()=>setMemoryFlipped([]),700); }
     }
   }
   function playRockPaperScissors(choice) {
