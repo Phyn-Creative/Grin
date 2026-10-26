@@ -130,6 +130,7 @@ export default function App() {
   const [gameJoinCode, setGameJoinCode] = useState('');
   const [gameMark, setGameMark] = useState('X');
   const [gameNotice, setGameNotice] = useState('');
+  const [grinTicTacToeThinking, setGrinTicTacToeThinking] = useState(false);
   const [grinBotDifficulty, setGrinBotDifficulty] = useState('normal');
   const [gameInviteTarget, setGameInviteTarget] = useState('');
   const [gameInviteCommunity, setGameInviteCommunity] = useState('');
@@ -1297,7 +1298,7 @@ export default function App() {
   }
 
 
-  function resetGrinGame(){const board=Array(9).fill('');setGameBoard(board);setGameTurn('X');setGameNotice('');if(gameRoomCode&&gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:'X',winner:null,room:gameRoomCode}});}
+  function resetGrinGame(){const board=Array(9).fill('');setGameBoard(board);setGameTurn('X');setGrinTicTacToeThinking(false);setGameNotice('');if(gameRoomCode&&gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:'X',winner:null,room:gameRoomCode}});}
   function exitGrinGameRoom(){
     if(!gameRoomCode){setGameNotice('You are not in an online room.');return;}
     setGameRoomCode('');
@@ -1360,7 +1361,7 @@ export default function App() {
     return botTurn?Math.max(...scores):Math.min(...scores);
   }
   function playGrinGameCell(index){
-    if(gameBoard[index]||grinGameWinner(gameBoard)||(gameRoomCode&&gameTurn!==gameMark))return;
+    if(grinTicTacToeThinking||gameBoard[index]||grinGameWinner(gameBoard)||(gameRoomCode&&gameTurn!==gameMark))return;
     const board=gameBoard.slice();board[index]=gameTurn;
     const winner=grinGameWinner(board);
     if(gameRoomCode){
@@ -1370,12 +1371,15 @@ export default function App() {
       return;
     }
     if(winner){setGameBoard(board);setGameNotice(winner==='draw'?'It is a draw!':'You win!');return;}
-    const botIndex=chooseGrinBotMove(board);
-    if(botIndex<0){setGameBoard(board);setGameNotice('It is a draw!');return;}
-    const afterBot=board.slice();afterBot[botIndex]='O';
-    const botWinner=grinGameWinner(afterBot);
-    setGameBoard(afterBot);setGameTurn('X');
-    setGameNotice(botWinner?(botWinner==='draw'?'It is a draw!':'GRIN Bot wins!'):'Your turn — you are X.');
+    setGrinTicTacToeThinking(true);setGameNotice('🤔 GRIN Bot is thinking…');
+    window.setTimeout(()=>{
+      const botIndex=chooseGrinBotMove(board);
+      if(botIndex<0){setGameBoard(board);setGrinTicTacToeThinking(false);setGameNotice('It is a draw!');return;}
+      const afterBot=board.slice();afterBot[botIndex]='O';
+      const botWinner=grinGameWinner(afterBot);
+      setGameBoard(afterBot);setGameTurn('X');setGrinTicTacToeThinking(false);
+      setGameNotice(botWinner?(botWinner==='draw'?'It is a draw!':'GRIN Bot wins!'):'Your turn — you are X.');
+    },1800);
   }
   async function copyGrinGameLink(){
     if(!gameRoomCode){setGameNotice('Create an online room first.');return;}
