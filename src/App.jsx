@@ -11,6 +11,19 @@ const footballTriviaMedium = [{"q":"Which club won the first Premier League seas
 const footballTriviaHard = [{"q":"Which club won the first European Cup in 1956?","options":["AC Milan","Real Madrid","Benfica","Stade de Reims"],"answer":1,"explain":"Real Madrid beat Stade de Reims in the inaugural final."},{"q":"Who scored the fastest goal in FIFA Men's World Cup history?","options":["Hakan Şükür","Miroslav Klose","Clint Dempsey","Robbie Keane"],"answer":0,"explain":"Hakan Şükür scored after about 11 seconds for Türkiye in 2002."},{"q":"Who won the inaugural UEFA European Championship in 1960?","options":["Spain","Soviet Union","Yugoslavia","Hungary"],"answer":1,"explain":"The Soviet Union won the 1960 final against Yugoslavia."},{"q":"Who was the first player to win the Ballon d'Or three times?","options":["Johan Cruyff","Michel Platini","Alfredo Di Stéfano","Marco van Basten"],"answer":0,"explain":"Johan Cruyff won in 1971, 1973 and 1974."},{"q":"Which African nation first reached the men's World Cup quarter-finals?","options":["Ghana","Cameroon","Senegal","Nigeria"],"answer":1,"explain":"Cameroon reached the quarter-finals in 1990."},{"q":"Which club won the 2004 UEFA Champions League final?","options":["Porto","Monaco","AC Milan","Liverpool"],"answer":0,"explain":"Porto beat Monaco 3–0."},{"q":"Who scored the winning goal in the 2010 World Cup final?","options":["David Villa","Xavi","Andrés Iniesta","Fernando Torres"],"answer":2,"explain":"Iniesta scored in extra time against the Netherlands."},{"q":"Which team completed the Premier League season unbeaten in 2003–04?","options":["Chelsea","Arsenal","Manchester United","Liverpool"],"answer":1,"explain":"Arsenal's Invincibles finished the league season unbeaten."},{"q":"Who won the first Africa Cup of Nations in 1957?","options":["Egypt","Ethiopia","South Africa","Sudan"],"answer":0,"explain":"Egypt won the inaugural tournament."},{"q":"Who scored a hat-trick in the 1966 World Cup final?","options":["Geoff Hurst","Bobby Charlton","Eusébio","Pelé"],"answer":0,"explain":"Geoff Hurst scored three times for England."}];
 const footballTriviaQuestionSets = { Easy: footballTriviaEasy, Medium: footballTriviaMedium, Hard: footballTriviaHard };
 
+function buildTriviaRound(level, recentByDifficulty = {}) {
+  const pool = footballTriviaQuestionSets[level] || footballTriviaEasy;
+  const recent = recentByDifficulty[level] || [];
+  let available = pool.filter(question => !recent.includes(question.q));
+  if (available.length < 5) available = pool.slice();
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  return available.slice(0, 5);
+}
+
+
 
 function Penalty3D({ animation, result, phase, shotPower = 70 }) {
   const hostRef = useRef(null);
@@ -126,7 +139,9 @@ export default function App() {
   const [numberNotice, setNumberNotice] = useState('Combine matching tiles to reach 2048.');
   const [triviaIndex, setTriviaIndex] = useState(0);
   const [triviaDifficulty, setTriviaDifficulty] = useState('Easy');
-  const activeTriviaQuestions = footballTriviaQuestionSets[triviaDifficulty];
+  const [triviaRoundQuestions, setTriviaRoundQuestions] = useState(() => buildTriviaRound('Easy'));
+  const [triviaRecentQuestions, setTriviaRecentQuestions] = useState({});
+  const activeTriviaQuestions = triviaRoundQuestions;
   const [triviaScore, setTriviaScore] = useState(0);
   const [triviaAnswer, setTriviaAnswer] = useState(null);
   const [triviaFinished, setTriviaFinished] = useState(false);
@@ -418,6 +433,14 @@ export default function App() {
     }
   }
 
+  function startFootballTriviaRound(level = triviaDifficulty) {
+    const nextQuestions = buildTriviaRound(level, triviaRecentQuestions);
+    setTriviaRecentQuestions(previous => ({ ...previous, [level]: nextQuestions.map(question => question.q) }));
+    setTriviaRoundQuestions(nextQuestions);
+    setTriviaDifficulty(level);
+    setTriviaIndex(0); setTriviaScore(0); setTriviaAnswer(null); setTriviaFinished(false);
+  }
+
   function answerFootballTrivia(optionIndex) {
     if (triviaAnswer !== null || triviaFinished) return;
     setTriviaAnswer(optionIndex);
@@ -432,7 +455,7 @@ export default function App() {
     setTriviaAnswer(null);
   }
   function resetFootballTrivia() {
-    setTriviaIndex(0); setTriviaScore(0); setTriviaAnswer(null); setTriviaFinished(false);
+    startFootballTriviaRound(triviaDifficulty);
   }
 
   function create2048Board(){
@@ -2221,10 +2244,10 @@ export default function App() {
       <button type="button" className={selectedGrinGame === 'trivia' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('trivia')}>Football Trivia 🧠</button>
     </div>
     {selectedGrinGame === 'trivia' ? <>
-      <div className="trivia-hero"><div className="trivia-hero-kicker"><span className="trivia-live-dot" /> GRIN SPORTS · QUIZ ARENA</div><div className="trivia-hero-main"><div><h2>Football <em>Trivia</em></h2><p>Know the game. Prove your football IQ.</p></div><div className="trivia-ball-art" aria-hidden="true">⚽</div></div><div className="trivia-hero-stats"><span><strong>10</strong> QUESTIONS</span><span><strong>3</strong> DIFFICULTIES</span><span><strong>FREE</strong> TO PLAY</span></div></div>
-      <section className="trivia-difficulty-wrap" aria-label="Choose difficulty"><div className="trivia-section-label"><span>01 / SELECT YOUR LEVEL</span><small>Choose your challenge</small></div><div className="trivia-difficulty-grid">{['Easy','Medium','Hard'].map((level,index)=><button key={level} type="button" className={'trivia-difficulty '+(triviaDifficulty===level?'is-selected':'')} onClick={()=>{setTriviaDifficulty(level);setTriviaIndex(0);setTriviaScore(0);setTriviaAnswer(null);setTriviaFinished(false);}}><span className="trivia-difficulty-icon">{['◉','◆','✦'][index]}</span><strong>{level}</strong><small>{['Warm-up · Fundamentals','Matchday · Deeper knowledge','Elite · For the obsessed'][index]}</small><span className="trivia-difficulty-check">{triviaDifficulty===level?'✓':'+'}</span></button>)}</div></section>
-      <div className="trivia-score-strip"><span><small>QUESTION</small><strong>{triviaFinished?10:triviaIndex+1}<i> / 10</i></strong></span><span><small>YOUR SCORE</small><strong>{triviaScore}<i> / 10</i></strong></span><span><small>LEVEL</small><strong>{triviaDifficulty.toUpperCase()}</strong></span></div><div className="trivia-progress-track"><i style={{width:((triviaFinished?10:triviaIndex)/10*100)+'%'}} /></div>
-      {triviaFinished?<div className="trivia-finish-panel"><div className="trivia-result-ring"><strong>{Math.round(triviaScore/10*100)}<small>%</small></strong></div><span className="trivia-eyebrow">FULL TIME · {triviaDifficulty.toUpperCase()} LEVEL</span><h3>{triviaScore===10?'Flawless. Absolute class.':triviaScore>=7?'Top-class performance!':triviaScore>=4?'Good game. Keep building.':'Back to training.'}</h3><p>You scored <strong>{triviaScore} out of 10</strong>. {triviaScore>=7?'You know your football.':triviaScore>=4?'A few more rounds and you’ll be flying.':'Every great player studies the game.'}</p><button type="button" className="primary" onClick={resetFootballTrivia}>Play again ↻</button></div>:<>
+      <div className="trivia-hero"><div className="trivia-hero-kicker"><span className="trivia-live-dot" /> GRIN SPORTS · QUIZ ARENA</div><div className="trivia-hero-main"><div><h2>Football <em>Trivia</em></h2><p>Know the game. Prove your football IQ.</p></div><div className="trivia-ball-art" aria-hidden="true">⚽</div></div><div className="trivia-hero-stats"><span><strong>5</strong> QUESTIONS</span><span><strong>3</strong> DIFFICULTIES</span><span><strong>FREE</strong> TO PLAY</span></div></div>
+      <section className="trivia-difficulty-wrap" aria-label="Choose difficulty"><div className="trivia-section-label"><span>01 / SELECT YOUR LEVEL</span><small>Choose your challenge</small></div><div className="trivia-difficulty-grid">{['Easy','Medium','Hard'].map((level,index)=><button key={level} type="button" className={'trivia-difficulty '+(triviaDifficulty===level?'is-selected':'')} onClick={()=>startFootballTriviaRound(level)}><span className="trivia-difficulty-icon">{['◉','◆','✦'][index]}</span><strong>{level}</strong><small>{['Warm-up · Fundamentals','Matchday · Deeper knowledge','Elite · For the obsessed'][index]}</small><span className="trivia-difficulty-check">{triviaDifficulty===level?'✓':'+'}</span></button>)}</div></section>
+      <div className="trivia-score-strip"><span><small>QUESTION</small><strong>{triviaFinished?5:triviaIndex+1}<i> / 5</i></strong></span><span><small>YOUR SCORE</small><strong>{triviaScore}<i> / 5</i></strong></span><span><small>LEVEL</small><strong>{triviaDifficulty.toUpperCase()}</strong></span></div><div className="trivia-progress-track"><i style={{width:((triviaFinished?5:triviaIndex)/5*100)+'%'}} /></div>
+      {triviaFinished?<div className="trivia-finish-panel"><div className="trivia-result-ring"><strong>{Math.round(triviaScore/5*100)}<small>%</small></strong></div><span className="trivia-eyebrow">FULL TIME · {triviaDifficulty.toUpperCase()} LEVEL</span><h3>{triviaScore===5?'Flawless. Absolute class.':triviaScore>=4?'Top-class performance!':triviaScore>=2?'Good game. Keep building.':'Back to training.'}</h3><p>You scored <strong>{triviaScore} out of 5</strong>. {triviaScore>=4?'You know your football.':triviaScore>=4?'A few more rounds and you’ll be flying.':'Every great player studies the game.'}</p><button type="button" className="primary" onClick={resetFootballTrivia}>Play again ↻</button></div>:<>
         <div className="trivia-question-card"><div className="trivia-question-top"><span className="trivia-eyebrow">MATCH IQ / {String(triviaIndex+1).padStart(2,'0')}</span><span className="trivia-difficulty-chip">{triviaDifficulty.toUpperCase()}</span></div><h3>{activeTriviaQuestions[triviaIndex].q}</h3></div>
         <div className="trivia-options" role="group" aria-label="Answer options">
           {activeTriviaQuestions[triviaIndex].options.map((option,index)=><button key={option} type="button" className={'trivia-option'+(triviaAnswer!==null?(index===activeTriviaQuestions[triviaIndex].answer?' is-correct':index===triviaAnswer?' is-wrong':''):'')} onClick={()=>answerFootballTrivia(index)} disabled={triviaAnswer!==null}><span className="trivia-option-letter">{String.fromCharCode(65+index)}</span><span>{option}</span>{triviaAnswer!==null&&index===activeTriviaQuestions[triviaIndex].answer?<strong>✓</strong>:null}</button>)}
