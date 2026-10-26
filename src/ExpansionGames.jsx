@@ -56,7 +56,7 @@ export default function ExpansionGames() {
    afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
    setChess(afterBot);setChessTurn('white');setChessThinking(false);
    setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
-  },1200);
+  },700);
  };
  const draughtTap=(i)=>{
   if(draughtTurn!=='white')return;
@@ -86,7 +86,7 @@ export default function ExpansionGames() {
    if(Math.floor(chosen.to/8)===7)afterBot[chosen.to].king=true;
    setDraughts(afterBot);setDraughtTurn('white');setDraughtThinking(false);
    setNotice(chosen.capture!==null?'GRIN Bot jumped a piece. Your turn.':'GRIN Bot moved. Your turn.');
-  },1800);
+  },700);
  };
  const menus=[['word','Word Guess','🔤'],['mines','Minesweeper','💣'],['chess','Chess','♟️'],['draughts','Dama / Draughts','⚫'],['quiz','GRIN Trivia','🧠'],['predict','Score Predictor','⚽'],['party','Truth or Dare','🎲'],['couples','Couples & compatibility','💞'],['rewards','Points & rankings','🏆'],['tournament','Tournaments','🥇']];
  const compatScore=useMemo(()=>Math.round(compat.reduce((a,b)=>a+b,0)/3),[compat]);
