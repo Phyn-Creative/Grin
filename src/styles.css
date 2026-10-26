@@ -2574,6 +2574,8 @@ button:active { transform: translateY(1px); }
 .snake-cell{aspect-ratio:1;min-width:0;border-radius:3px;background:#f7fbf8}
 .snake-cell.snake-body{background:#24a66a}
 .snake-cell.snake-head{background:#105b39;border-radius:5px;box-shadow:inset 0 0 0 2px #83d9a9}
+.snake-cell.snake-rival-body{background:#c84c4c}
+.snake-cell.snake-rival-head{background:#8b2424;border-radius:5px;box-shadow:inset 0 0 0 2px #f2a1a1}
 .snake-cell.snake-food{background:#e4a83a;border-radius:50%;box-shadow:0 0 0 2px rgba(228,168,58,.2)}
 .snake-control-hint{text-align:center;color:var(--muted,#68786e);font-size:.88rem;margin:10px 0 2px;}
 @media(max-width:420px){.grin-snake-board{gap:1px;padding:5px}.snake-cell{border-radius:2px}}
