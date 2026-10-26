@@ -2621,23 +2621,58 @@ button:active { transform: translateY(1px); }
 .number2048-controls{display:flex;flex-direction:column;align-items:center;gap:6px;margin:12px auto}.number2048-controls>div{display:flex;gap:6px}.number2048-controls button{min-width:48px;min-height:42px;font-size:20px}
 
 
-/* GRIN Football Penalty Shootout */
+/* GRIN Football Penalty Shootout — animated arcade arena */
 .penalty-scoreboard{display:flex;align-items:center;justify-content:center;gap:clamp(18px,7vw,52px);margin:10px auto 6px;text-align:center}
 .penalty-scoreboard>div:not(.penalty-score-divider){display:flex;flex-direction:column;gap:4px;min-width:88px}
 .penalty-scoreboard span{font-size:13px;color:var(--muted,#68786e)}
 .penalty-scoreboard strong{font-size:clamp(30px,8vw,42px);line-height:1.1;color:var(--text,#173528)}
-.penalty-score-divider{font-size:12px;font-weight:800;opacity:.6}
-.penalty-round-label{text-align:center;font-weight:750;margin:8px 0;color:var(--text,#173528)}
-.penalty-goal{position:relative;width:min(100%,340px);height:140px;margin:14px auto 18px;border:7px solid #e8e9e7;border-bottom:0;border-radius:12px 12px 0 0;background:repeating-linear-gradient(0deg,transparent 0 17px,rgba(23,74,50,.12) 18px 19px),repeating-linear-gradient(90deg,transparent 0 25px,rgba(23,74,50,.12) 26px 27px),linear-gradient(#d8f0df,#eef8f0);box-shadow:0 4px 0 #b8c5bc inset}
-.penalty-net{height:100%;display:flex;align-items:center;justify-content:center;font-size:76px;opacity:.8}
-.penalty-ball{position:absolute;bottom:-18px;left:calc(50% - 17px);font-size:31px;filter:drop-shadow(0 3px 2px rgba(0,0,0,.18))}
-.penalty-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;width:min(100%,440px);margin:12px auto}
-.penalty-directions button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:76px;padding:8px 4px}
-.penalty-directions button span{font-size:23px;font-weight:800}
-.penalty-directions button:disabled{opacity:.5}
-[data-grin-theme="dark"] .penalty-goal{background:repeating-linear-gradient(0deg,transparent 0 17px,rgba(255,255,255,.12) 18px 19px),repeating-linear-gradient(90deg,transparent 0 25px,rgba(255,255,255,.12) 26px 27px),linear-gradient(#1e3928,#263d2f);border-color:#bac8be}
-@media(max-width:420px){.penalty-goal{height:115px}.penalty-directions{gap:6px}.penalty-directions button{font-size:12px;min-height:70px}}
-
+.penalty-score-divider{font-size:12px;font-weight:900;opacity:.6}
+.penalty-round-label{text-align:center;font-weight:800;margin:8px 0;color:var(--text,#173528)}
+.penalty-arena{position:relative;isolation:isolate;overflow:hidden;width:100%;max-width:560px;min-height:300px;margin:16px auto 18px;border-radius:20px;background:linear-gradient(180deg,#101d33 0%,#1b2c46 38%,#0d633e 39%,#12834b 100%);box-shadow:0 12px 32px rgba(8,38,25,.2);color:white}
+.penalty-stadium-lights{position:absolute;top:12px;left:7%;right:7%;display:flex;justify-content:space-between;z-index:1}
+.penalty-stadium-lights i{display:block;width:48px;height:6px;border-radius:10px;background:#fff5cb;box-shadow:0 0 14px 5px rgba(255,244,188,.3)}
+.penalty-crowd{position:absolute;top:37px;left:0;right:0;height:65px;overflow:hidden;text-align:center;line-height:21px;letter-spacing:3px;color:#e5d9ad;font-size:14px;opacity:.62;background:repeating-linear-gradient(90deg,rgba(255,255,255,.08) 0 7px,transparent 7px 14px)}
+.penalty-pitch{position:absolute;left:0;right:0;bottom:0;height:72%;background:repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 27px,rgba(0,0,0,.025) 27px 54px),linear-gradient(180deg,#15824a,#086035);border-top:2px solid rgba(255,255,255,.18)}
+.penalty-pitch-lines{position:absolute;inset:18px 8% 0;border:2px solid rgba(255,255,255,.42);border-bottom:0;border-radius:50% 50% 0 0/28% 28% 0 0}
+.penalty-pitch-lines:after{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px solid rgba(255,255,255,.17)}
+.penalty-goal-frame{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:47%;height:40%;border:5px solid #f6f7f2;border-bottom:0;border-radius:6px 6px 0 0;filter:drop-shadow(0 2px 2px rgba(0,0,0,.28))}
+.penalty-goal-net{position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 11px,rgba(255,255,255,.38) 12px 13px),repeating-linear-gradient(90deg,transparent 0 15px,rgba(255,255,255,.38) 16px 17px);background-color:rgba(255,255,255,.06)}
+.penalty-keeper{position:absolute;z-index:3;top:18%;left:50%;width:70px;height:93px;transform:translateX(-50%);transition:left .3s ease,transform .3s ease;filter:drop-shadow(0 3px 2px rgba(0,0,0,.28))}
+.keeper-head{position:absolute;top:0;left:27px;width:18px;height:18px;border-radius:50%;background:#d9a47b;border:2px solid #f5d4ad}
+.keeper-body{position:absolute;top:20px;left:19px;width:34px;height:36px;border-radius:9px 9px 5px 5px;background:#f0b52f;border:2px solid #fff0a5}
+.keeper-arm{position:absolute;top:24px;width:28px;height:10px;border-radius:8px;background:#f0b52f;border:2px solid #fff0a5;transform-origin:center}
+.keeper-arm-left{left:-2px;transform:rotate(-28deg)}.keeper-arm-right{right:-2px;transform:rotate(28deg)}
+.keeper-leg{position:absolute;top:53px;width:12px;height:32px;border-radius:5px;background:#182b45}
+.keeper-leg-left{left:22px;transform:rotate(8deg)}.keeper-leg-right{right:22px;transform:rotate(-8deg)}
+.penalty-ball{position:absolute;z-index:4;bottom:13%;left:calc(50% - 17px);font-size:34px;line-height:1;filter:drop-shadow(0 4px 2px rgba(0,0,0,.28));transition:none}
+.penalty-shot-flash{position:absolute;z-index:5;top:51%;left:50%;transform:translate(-50%,-50%) scale(.7);font-size:clamp(23px,6vw,39px);font-weight:1000;font-style:italic;letter-spacing:1px;color:#fff4a3;text-shadow:0 3px 0 #b54424,0 6px 18px rgba(0,0,0,.45);opacity:0;pointer-events:none;white-space:nowrap}
+.penalty-arena-caption{position:absolute;z-index:6;bottom:10px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:1.6px;font-weight:900;color:#f3f5d8}
+.penalty-arena.is-active .penalty-shot-flash{animation:penalty-flash .8s ease-out both}
+.penalty-arena.shot-left-goal .penalty-ball,.penalty-arena.keeper-left-goal-shot-left .penalty-ball{animation:ball-left-goal .72s cubic-bezier(.2,.7,.25,1) both}
+.penalty-arena.shot-center-goal .penalty-ball,.penalty-arena.keeper-center-goal-shot-center .penalty-ball{animation:ball-center-goal .72s cubic-bezier(.2,.7,.25,1) both}
+.penalty-arena.shot-right-goal .penalty-ball,.penalty-arena.keeper-right-goal-shot-right .penalty-ball{animation:ball-right-goal .72s cubic-bezier(.2,.7,.25,1) both}
+.penalty-arena.shot-left-saved .penalty-ball,.penalty-arena.shot-center-saved .penalty-ball,.penalty-arena.shot-right-saved .penalty-ball{animation:ball-saved .7s ease-out both}
+.penalty-arena.keeper-left-goal .penalty-ball,.penalty-arena.keeper-center-goal .penalty-ball,.penalty-arena.keeper-right-goal .penalty-ball{animation:ball-bot-shot .7s ease-out both}
+.penalty-arena.shot-left-goal .penalty-keeper,.penalty-arena.keeper-left-save-shot-left .penalty-keeper{left:28%;transform:translateX(-50%) rotate(-25deg)}
+.penalty-arena.shot-right-goal .penalty-keeper,.penalty-arena.keeper-right-save-shot-right .penalty-keeper{left:72%;transform:translateX(-50%) rotate(25deg)}
+.penalty-arena.shot-center-goal .penalty-keeper{transform:translateX(-50%) scale(1.12)}
+.penalty-arena.keeper-left-save-shot-left .penalty-keeper{left:28%;transform:translateX(-50%) rotate(-45deg) scale(1.12)}
+.penalty-arena.keeper-right-save-shot-right .penalty-keeper{left:72%;transform:translateX(-50%) rotate(45deg) scale(1.12)}
+.penalty-arena.keeper-center-save-shot-center .penalty-keeper{transform:translateX(-50%) scale(1.2)}
+.penalty-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:min(100%,440px);margin:14px auto}
+.penalty-action-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:88px;padding:10px 5px;border:1px solid rgba(23,74,50,.2)!important;border-radius:14px!important;background:linear-gradient(180deg,#fffdf6,#f0f5ec)!important;color:#174a32!important;box-shadow:0 4px 0 #cbd8ca;transition:transform .15s ease,box-shadow .15s ease,filter .15s ease}
+.penalty-action-btn span{font-size:23px;font-weight:900;line-height:1.1}.penalty-action-btn strong{font-size:13px;letter-spacing:1px}.penalty-action-btn small{font-size:10px;letter-spacing:1.5px}
+.penalty-action-btn:not(:disabled):active{transform:translateY(3px);box-shadow:0 1px 0 #cbd8ca}
+.penalty-action-btn:disabled{opacity:.55;filter:grayscale(.35)}
+@keyframes ball-left-goal{0%{left:calc(50% - 17px);bottom:13%;transform:scale(1)}70%{left:27%;bottom:52%;transform:scale(.72) rotate(260deg)}100%{left:27%;bottom:52%;transform:scale(.72) rotate(360deg)}}
+@keyframes ball-center-goal{0%{bottom:13%;transform:scale(1)}70%,100%{bottom:56%;transform:scale(.68) rotate(360deg)}}
+@keyframes ball-right-goal{0%{left:calc(50% - 17px);bottom:13%;transform:scale(1)}70%,100%{left:73%;bottom:52%;transform:scale(.72) rotate(360deg)}}
+@keyframes ball-saved{0%{bottom:13%;transform:scale(1)}55%{bottom:51%;transform:scale(.72)}100%{bottom:38%;transform:translateX(15px) scale(.82) rotate(100deg)}}
+@keyframes ball-bot-shot{0%{left:calc(50% - 17px);bottom:8%;transform:scale(1)}70%,100%{left:65%;bottom:50%;transform:scale(.72) rotate(360deg)}}
+@keyframes penalty-flash{0%{opacity:0;transform:translate(-50%,-50%) scale(.55)}20%,75%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.25)}}
+@media(max-width:420px){.penalty-arena{min-height:270px;border-radius:15px}.penalty-goal-frame{width:54%;height:38%}.penalty-action-btn{min-height:78px}.penalty-directions{gap:7px}}
+[data-grin-theme="dark"] .penalty-action-btn{background:linear-gradient(180deg,#263a2f,#172a20)!important;color:#f5f2e9!important;border-color:#3c5c48!important;box-shadow:0 4px 0 #0c1b12}
+@media(prefers-reduced-motion:reduce){.penalty-arena *,.penalty-action-btn{animation:none!important;transition:none!important}}
 /* GRIN Connect Four */
 .connect-four-board{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:clamp(3px,1vw,7px);width:min(100%,490px);margin:10px auto;padding:clamp(6px,2vw,12px);background:#1767a3;border:1px solid #0f5489;border-radius:18px;box-shadow:0 8px 22px rgba(14,68,108,.16)}
 .connect-four-drop{min-width:0;aspect-ratio:1;border:0;border-radius:50%;background:#e8f3fa;color:#1767a3;font-size:clamp(14px,4vw,23px);font-weight:800;cursor:pointer}
