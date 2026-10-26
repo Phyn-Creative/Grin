@@ -6,6 +6,8 @@ import * as THREE from 'three';
 
 const fallbackChats = [{ id: 'welcome', name: 'Welcome to GRIN', preview: 'This is where your conversations come alive.', initials: 'G' }];
 
+const footballTriviaQuestions = [{"q":"Which country won the 2022 FIFA Men's World Cup?","options":["France","Argentina","Croatia","Brazil"],"answer":1,"explain":"Argentina beat France on penalties in the final."},{"q":"How many players does one team normally have on the pitch at kickoff?","options":["9","10","11","12"],"answer":2,"explain":"A full side has 11 players, including the goalkeeper."},{"q":"What is the standard length of a football match, before added time?","options":["80 minutes","90 minutes","100 minutes","120 minutes"],"answer":1,"explain":"Two 45-minute halves make 90 minutes."},{"q":"Which card means a player is sent off?","options":["Blue","Green","Yellow","Red"],"answer":3,"explain":"A red card sends a player off."},{"q":"What is it called when a player scores three goals in one match?","options":["A hat-trick","A clean sheet","A brace","A treble save"],"answer":0,"explain":"Three goals by one player is a hat-trick."},{"q":"Which position is usually the only one allowed to handle the ball inside their own penalty area?","options":["Centre-back","Striker","Goalkeeper","Captain"],"answer":2,"explain":"The goalkeeper can handle the ball inside their own penalty area, subject to the Laws of the Game."},{"q":"How far is the penalty spot from the goal line?","options":["9 metres","10 metres","11 metres","12 metres"],"answer":2,"explain":"The penalty mark is 11 metres (12 yards) from the goal line."},{"q":"Which tournament is contested by European national teams?","options":["Copa América","UEFA European Championship","AFC Asian Cup","Africa Cup of Nations"],"answer":1,"explain":"The UEFA European Championship is Europe's national-team tournament."},{"q":"What does VAR stand for in football?","options":["Video Assistant Referee","Verified Action Review","Virtual Assistant Replay","Video Attack Rule"],"answer":0,"explain":"VAR means Video Assistant Referee."},{"q":"How many points does a team earn for a win in most league competitions?","options":["1","2","3","4"],"answer":2,"explain":"Most league systems award three points for a win."}];
+
 function Penalty3D({ animation, result, phase, shotPower = 70 }) {
   const hostRef = useRef(null);
   const sceneRef = useRef(null);
@@ -118,6 +120,10 @@ export default function App() {
   const [numberScore, setNumberScore] = useState(0);
   const [numberBest, setNumberBest] = useState(0);
   const [numberNotice, setNumberNotice] = useState('Combine matching tiles to reach 2048.');
+  const [triviaIndex, setTriviaIndex] = useState(0);
+  const [triviaScore, setTriviaScore] = useState(0);
+  const [triviaAnswer, setTriviaAnswer] = useState(null);
+  const [triviaFinished, setTriviaFinished] = useState(false);
 
   const [connectFourBoard, setConnectFourBoard] = useState(Array(42).fill(''));
   const [connectFourNotice, setConnectFourNotice] = useState('Your turn — choose a column.');
@@ -404,6 +410,23 @@ export default function App() {
         ? 'WHAT A SAVE! GRIN Bot shot '+shot+'. Round '+(penaltyRound+1)+' — your next penalty.'
         : 'GRIN Bot scores, shooting '+shot+'. Round '+(penaltyRound+1)+' — your next penalty.');
     }
+  }
+
+  function answerFootballTrivia(optionIndex) {
+    if (triviaAnswer !== null || triviaFinished) return;
+    setTriviaAnswer(optionIndex);
+    if (optionIndex === footballTriviaQuestions[triviaIndex].answer) setTriviaScore(score => score + 1);
+  }
+  function nextFootballTrivia() {
+    if (triviaIndex >= footballTriviaQuestions.length - 1) {
+      setTriviaFinished(true);
+      return;
+    }
+    setTriviaIndex(index => index + 1);
+    setTriviaAnswer(null);
+  }
+  function resetFootballTrivia() {
+    setTriviaIndex(0); setTriviaScore(0); setTriviaAnswer(null); setTriviaFinished(false);
   }
 
   function create2048Board(){
@@ -2189,8 +2212,19 @@ export default function App() {
       <button type="button" className={selectedGrinGame === '2048' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('2048')}>2048</button>
       <button type="button" className={selectedGrinGame === 'connect4' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('connect4')}>Connect Four</button>
       <button type="button" className={selectedGrinGame === 'football' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('football')}>Penalty Shootout ⚽</button>
+      <button type="button" className={selectedGrinGame === 'trivia' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('trivia')}>Football Trivia 🧠</button>
     </div>
-    {selectedGrinGame === 'football' ? <>
+    {selectedGrinGame === 'trivia' ? <>
+      <div className="feed-head"><div><h2>Football Trivia 🧠</h2><p>10 questions. Test your football knowledge and chase a perfect score.</p></div><Trophy size={25}/></div>
+      <div className="trivia-score-strip"><span>QUESTION <strong>{triviaFinished ? 10 : triviaIndex + 1}</strong> / 10</span><span>SCORE <strong>{triviaScore}</strong></span></div>
+      {triviaFinished ? <div className="trivia-finish-panel"><div className="trivia-trophy">🏆</div><h3>{triviaScore===10?'Perfect score!':triviaScore>=7?'Top-class performance!':triviaScore>=4?'Good game!':'Keep training!'}</h3><p>You scored <strong>{triviaScore} out of 10</strong>.</p><button type="button" className="primary" onClick={resetFootballTrivia}>Play again</button></div> : <>
+        <div className="trivia-question-card"><span className="trivia-eyebrow">MATCH IQ</span><h3>{footballTriviaQuestions[triviaIndex].q}</h3></div>
+        <div className="trivia-options" role="group" aria-label="Answer options">
+          {footballTriviaQuestions[triviaIndex].options.map((option,index)=><button key={option} type="button" className={'trivia-option'+(triviaAnswer!==null?(index===footballTriviaQuestions[triviaIndex].answer?' is-correct':index===triviaAnswer?' is-wrong':''):'')} onClick={()=>answerFootballTrivia(index)} disabled={triviaAnswer!==null}><span className="trivia-option-letter">{String.fromCharCode(65+index)}</span><span>{option}</span>{triviaAnswer!==null&&index===footballTriviaQuestions[triviaIndex].answer?<strong>✓</strong>:null}</button>)}
+        </div>
+        {triviaAnswer!==null ? <div className="trivia-feedback"><p><strong>{triviaAnswer===footballTriviaQuestions[triviaIndex].answer?'Correct!':'Not quite.'}</strong> {footballTriviaQuestions[triviaIndex].explain}</p><button type="button" className="primary" onClick={nextFootballTrivia}>{triviaIndex===footballTriviaQuestions.length-1?'See results':'Next question'} →</button></div> : <p className="game-turn-status">Choose your answer to lock it in.</p>}
+      </>}
+    </> : selectedGrinGame === 'football' ? <>
       <div className="feed-head"><div><h2>Penalty Shootout ⚽</h2><p>Five rounds against GRIN Bot. Shoot past the keeper, then dive to try to save its shot.</p></div><Trophy size={25}/></div>
       <div className="penalty-scoreboard" aria-live="polite">
         <div><span>You</span><strong>{penaltyPlayerGoals}</strong></div>
