@@ -541,13 +541,63 @@ export default function App() {
     if(!/^[A-Z0-9]{6,12}$/.test(code)){setGameNotice('Enter a valid room code.');return;}
     setGameRoomCode(code);setGameMark('O');setGameNotice('Joining room…');
   }
+  function chooseGrinBotMove(board){
+    const winner=grinGameWinner(board);
+    if(winner==='O')return 10;
+    if(winner==='X')return -10;
+    if(winner==='draw')return 0;
+    const scores=[];
+    for(let i=0;i<9;i++)if(!board[i]){
+      const next=board.slice();next[i]='O';
+      scores.push({i,score:grinBotMinimax(next,false)});
+    }
+    scores.sort((a,b)=>b.score-a.score);
+    return scores[0]?.i??-1;
+  }
+  function grinBotMinimax(board,botTurn){
+    const winner=grinGameWinner(board);
+    if(winner==='O')return 10;
+    if(winner==='X')return -10;
+    if(winner==='draw')return 0;
+    const scores=[];
+    for(let i=0;i<9;i++)if(!board[i]){
+      const next=board.slice();next[i]=botTurn?'O':'X';
+      scores.push(grinBotMinimax(next,!botTurn));
+    }
+    return botTurn?Math.max(...scores):Math.min(...scores);
+  }
   function playGrinGameCell(index){
     if(gameBoard[index]||grinGameWinner(gameBoard)||(gameRoomCode&&gameTurn!==gameMark))return;
     const board=gameBoard.slice();board[index]=gameTurn;
-    const next=gameTurn==='X'?'O':'X';setGameBoard(board);setGameTurn(next);
     const winner=grinGameWinner(board);
-    setGameNotice(winner?(winner==='draw'?'It is a draw!':winner+' wins!'):(gameRoomCode?'Move played.':'Local two-player game'));
-    if(gameRoomCode&&gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:next,winner,room:gameRoomCode}});
+    if(gameRoomCode){
+      const next=gameTurn==='X'?'O':'X';setGameBoard(board);setGameTurn(next);
+      setGameNotice(winner?(winner==='draw'?'It is a draw!':winner+' wins!'):'Move played. Waiting for your opponent…');
+      if(gameChannelRef.current)gameChannelRef.current.send({type:'broadcast',event:'game-state',payload:{board,turn:next,winner,room:gameRoomCode}});
+      return;
+    }
+    if(winner){setGameBoard(board);setGameNotice(winner==='draw'?'It is a draw!':'You win!');return;}
+    const botIndex=chooseGrinBotMove(board);
+    if(botIndex<0){setGameBoard(board);setGameNotice('It is a draw!');return;}
+    const afterBot=board.slice();afterBot[botIndex]='O';
+    const botWinner=grinGameWinner(afterBot);
+    setGameBoard(afterBot);setGameTurn('X');
+    setGameNotice(botWinner?(botWinner==='draw'?'It is a draw!':'GRIN Bot wins!'):'Your turn — you are X.');
+  }
+  async function copyGrinGameLink(){
+    if(!gameRoomCode){setGameNotice('Create an online room first.');return;}
+    const link=window.location.origin+window.location.pathname+'?game=ttt&room='+encodeURIComponent(gameRoomCode);
+    try{await navigator.clipboard.writeText(link);setGameNotice('Game link copied. Paste it into a chat or community post.');}
+    catch{window.prompt('Copy your GRIN game link:',link);setGameNotice('If the link was copied from the prompt, paste it into a chat or community post.');}
+  }
+  async function shareGrinGameLink(){
+    if(!gameRoomCode){setGameNotice('Create an online room first.');return;}
+    const link=window.location.origin+window.location.pathname+'?game=ttt&room='+encodeURIComponent(gameRoomCode);
+    const shareData={title:'Play Tic-Tac-Toe on GRIN',text:'Join my GRIN Tic-Tac-Toe game. Room '+gameRoomCode, url:link};
+    try{
+      if(navigator.share){await navigator.share(shareData);setGameNotice('Game link shared.');}
+      else{await navigator.clipboard.writeText(link);setGameNotice('This device does not support direct sharing here, so the game link was copied.');}
+    }catch(error){if(error?.name!=='AbortError')setGameNotice('Could not open sharing. Try Copy game link instead.');}
   }
   async function sendGrinGameInvite(){
     if(!gameRoomCode){setGameNotice('Create a game room first, then invite people.');return;}
@@ -1476,13 +1526,13 @@ export default function App() {
 : active === 'games' ? <div className="feed-page grin-games-page">
   <div className="feed-head"><div><h1><Gamepad2 size={27} style={{verticalAlign:'middle',marginRight:8}}/>GRIN Games</h1><p>Take a break, challenge your people, and play together.</p></div></div>
   <section className="profile-card grin-game-card">
-    <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play locally or create an online room.'}</p></div><Trophy size={25}/></div>
+    <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
     <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
     <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
-    <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Reset board</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
+    <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
     <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
   </section>
-  <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Send the room link to a friend or post it in a community you belong to.</p>
+  <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online room, then copy its link or share it directly from your device.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
     <label>Invite through a conversation</label><select value={gameInviteTarget} onChange={e=>{setGameInviteTarget(e.target.value);if(e.target.value)setGameInviteCommunity('');}}><option value="">Choose a chat or group…</option>{chats.filter(chat=>chat.id!=='welcome').map(chat=><option key={chat.id} value={chat.id}>{chat.name}</option>)}</select>
     <label>Or invite a community</label><select value={gameInviteCommunity} onChange={e=>{setGameInviteCommunity(e.target.value);if(e.target.value)setGameInviteTarget('');}}><option value="">Choose a community…</option>{communities.filter(item=>communityMembers[item.id]?.joined).map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
     <button type="button" className="primary" onClick={sendGrinGameInvite}>Send game invitation</button>
