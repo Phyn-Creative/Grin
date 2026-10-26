@@ -41,6 +41,7 @@ export default function App() {
   const [snakeRoomRole, setSnakeRoomRole] = useState('');
   const [snakeJoinCode, setSnakeJoinCode] = useState('');
   const snakeChannelRef = useRef(null);
+  const snakeSwipeStartRef = useRef(null);
   const [memoryCards, setMemoryCards] = useState(['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5));
   const [memoryFlipped, setMemoryFlipped] = useState([]);
   const [memoryMatched, setMemoryMatched] = useState([]);
@@ -119,6 +120,22 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [active, selectedGrinGame]);
 
+  function handleSnakeSwipeStart(event) {
+    const touch = event.touches?.[0];
+    if (touch) snakeSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+  function handleSnakeSwipeEnd(event) {
+    const start = snakeSwipeStartRef.current;
+    snakeSwipeStartRef.current = null;
+    const touch = event.changedTouches?.[0];
+    if (!start || !touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
+    const next = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+    steerGrinSnake(next);
+  }
+
   function startGrinSnake() {
     const body = [34, 33, 32];
     let food = Math.floor(Math.random() * 192);
@@ -128,7 +145,7 @@ export default function App() {
     snakeDirectionRef.current = 'right';
     snakeScoreRef.current = 0;
     setSnakeBody(body); setSnakeFood(food); setSnakeDirection('right');
-    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice(snakeRoomCode ? 'Arena started! Host controls the game clock.' : 'Use the arrow keys or on-screen controls.');
+    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice(snakeRoomCode ? 'Arena started! Host controls the game clock.' : 'Swipe on the board to steer, or use arrow keys / WASD on desktop.');
     if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body,food,direction:'right',running:true,score:0,notice:'Arena started!'} });
   }
   function steerGrinSnake(next) {
@@ -1773,19 +1790,12 @@ export default function App() {
           {snakeRoomRole==='host'&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Arena':'Start Arena'}</button>}
         </>}
       </div>
-      <div className="grin-snake-board" role="img" aria-label={'Snake game board. Score '+snakeScore}>
+      <div className="grin-snake-board" role="img" aria-label={'Snake game board. Score '+snakeScore+'. Swipe in a direction to steer.'} onTouchStart={handleSnakeSwipeStart} onTouchEnd={handleSnakeSwipeEnd}>
         {Array.from({length:192},(_,index)=><span key={index} className={'snake-cell'+(snakeBody.includes(index)?' snake-body':'')+(snakeBody[0]===index?' snake-head':'')+(snakeFood===index?' snake-food':'')} />)}
       </div>
       <p className="game-turn-status" aria-live="polite">{snakeNotice}</p>
       <div className="card-actions">{!snakeRoomCode&&<button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button>}{(!snakeRoomCode||snakeRoomRole==='host')&&<button type="button" className="secondary-btn" onClick={()=>{setSnakeRunning(false);setSnakeNotice('Game paused.');if(snakeRoomCode&&snakeChannelRef.current)snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:snakeBodyRef.current,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:false,score:snakeScoreRef.current,notice:'Host paused the arena.'}});}}>Pause</button>}</div>
-      <div className="snake-controls" aria-label="Snake direction controls">
-        <span />
-        <button type="button" aria-label="Move up" onClick={()=>steerGrinSnake('up')}>↑</button>
-        <span />
-        <button type="button" aria-label="Move left" onClick={()=>steerGrinSnake('left')}>←</button>
-        <button type="button" aria-label="Move down" onClick={()=>steerGrinSnake('down')}>↓</button>
-        <button type="button" aria-label="Move right" onClick={()=>steerGrinSnake('right')}>→</button>
-      </div>
+      <p className="snake-control-hint">Mobile: swipe on the board to steer. Desktop: use arrow keys or W, A, S, D.</p>
     </> : selectedGrinGame === 'memory' ? <>
       <div className="feed-head"><div><h2>Memory Match</h2><p>Find all six matching fruit pairs in as few moves as possible.</p></div><Trophy size={25}/></div>
       <div className="memory-game-board" role="group" aria-label="Memory match cards">{memoryCards.map((card,index)=><button type="button" key={card.id} className={'memory-card'+(memoryFlipped.includes(index)||memoryMatched.includes(index)?' revealed':'')+(memoryMatched.includes(index)?' matched':'')} onClick={()=>flipMemoryCard(index)} disabled={memoryMatched.includes(index)||memoryFlipped.includes(index)||memoryFlipped.length>=2}>{memoryFlipped.includes(index)||memoryMatched.includes(index)?card.emoji:'?'}</button>)}</div>
