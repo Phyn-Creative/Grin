@@ -399,7 +399,7 @@ export default function App() {
       if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
       else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
       else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
-    }, 1800);
+    }, 1200);
   }
 
   function createOnlinePenaltyRoom() {
@@ -806,7 +806,7 @@ export default function App() {
     window.setTimeout(()=>{
       setRpsResult('You chose '+choice+' · GRIN Bot chose '+bot+'. '+(result==='draw'?'It’s a draw!':result==='win'?'You win this round!':'GRIN Bot wins this round.'));
       setRpsScore(s=>({...s,wins:s.wins+(result==='win'?1:0),draws:s.draws+(result==='draw'?1:0),losses:s.losses+(result==='loss'?1:0)}));
-    },1800);
+    },1200);
   }
   function resetRockPaperScissors() { setRpsChoice(''); setRpsResult('Choose rock, paper or scissors to play against GRIN Bot.'); setRpsScore({wins:0,draws:0,losses:0}); }
   function resetRpsMatch(){setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsRoundWins({you:0,opponent:0});setRpsResult('New match started. Choose your move.');}
