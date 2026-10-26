@@ -28,6 +28,7 @@ export default function App() {
   const [gameJoinCode, setGameJoinCode] = useState('');
   const [gameMark, setGameMark] = useState('X');
   const [gameNotice, setGameNotice] = useState('');
+  const [grinBotDifficulty, setGrinBotDifficulty] = useState('normal');
   const [gameInviteTarget, setGameInviteTarget] = useState('');
   const [gameInviteCommunity, setGameInviteCommunity] = useState('');
   const [selectedGrinGame, setSelectedGrinGame] = useState('ttt');
@@ -914,16 +915,23 @@ export default function App() {
     setGameRoomCode(code);setGameMark('O');setGameNotice('Joining room…');
   }
   function chooseGrinBotMove(board){
-    const winner=grinGameWinner(board);
-    if(winner==='O')return 10;
-    if(winner==='X')return -10;
-    if(winner==='draw')return 0;
+    const legal=[];
+    for(let i=0;i<9;i++)if(!board[i])legal.push(i);
+    if(!legal.length)return -1;
+    // Easy intentionally makes occasional blunders; Normal mixes strong play
+    // with imperfect choices; Hard uses the optimal minimax move.
+    const randomChance=grinBotDifficulty==='easy'?0.62:grinBotDifficulty==='normal'?0.24:0;
+    if(Math.random()<randomChance)return legal[Math.floor(Math.random()*legal.length)];
     const scores=[];
-    for(let i=0;i<9;i++)if(!board[i]){
+    for(const i of legal){
       const next=board.slice();next[i]='O';
       scores.push({i,score:grinBotMinimax(next,false)});
     }
     scores.sort((a,b)=>b.score-a.score);
+    if(grinBotDifficulty==='normal'&&scores.length>1&&Math.random()<0.38){
+      const weaker=scores.filter(move=>move.score<scores[0].score);
+      if(weaker.length)return weaker[Math.floor(Math.random()*weaker.length)].i;
+    }
     return scores[0]?.i??-1;
   }
   function grinBotMinimax(board,botTurn){
@@ -1916,6 +1924,7 @@ export default function App() {
     </div>
     {selectedGrinGame === 'ttt' ? <>
       <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
+      {!gameRoomCode&&<div className="grin-bot-difficulty"><label htmlFor="grin-bot-level">GRIN Bot difficulty</label><select id="grin-bot-level" value={grinBotDifficulty} onChange={e=>setGrinBotDifficulty(e.target.value)}><option value="easy">Easy · Friendly</option><option value="normal">Normal · Fair challenge</option><option value="hard">Hard · Unbeatable strategy</option></select><small>{grinBotDifficulty==='easy'?'A relaxed game with plenty of room to win.':grinBotDifficulty==='normal'?'A fair challenge with occasional imperfect moves.':'The strongest strategy — prepare for a tough match!'}</small></div>}
       <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
       <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
       <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button>{gameRoomCode&&<button type="button" className="secondary-btn" onClick={exitGrinGameRoom}>Exit room</button>}</div>
