@@ -148,6 +148,7 @@ export default function App() {
   const [triviaFinished, setTriviaFinished] = useState(false);
 
   const [connectFourBoard, setConnectFourBoard] = useState(Array(42).fill(''));
+  const [connectFourThinking, setConnectFourThinking] = useState(false);
   const [connectFourNotice, setConnectFourNotice] = useState('Your turn — choose a column.');
   const [connectFourOver, setConnectFourOver] = useState(false);
   const [onlinePenaltyRoom, setOnlinePenaltyRoom] = useState('');
@@ -366,31 +367,38 @@ export default function App() {
   function resetConnectFour() {
     setConnectFourBoard(Array(42).fill(''));
     setConnectFourOver(false);
+    setConnectFourThinking(false);
     setConnectFourNotice('Your turn — choose a column.');
   }
   function playConnectFour(column) {
-    if (connectFourOver) return;
+    if (connectFourOver || connectFourThinking) return;
     const human = connectFourDrop(connectFourBoard, column, 'R');
     if (human.index < 0) { setConnectFourNotice('That column is full. Pick another one.'); return; }
+    setConnectFourBoard(human.board);
     if (connectFourWinner(human.board, 'R')) {
-      setConnectFourBoard(human.board); setConnectFourOver(true); setConnectFourNotice('You win! Four in a row. 🎉'); return;
+      setConnectFourOver(true); setConnectFourNotice('You win! Four in a row. 🎉'); return;
     }
     if (human.board.every(Boolean)) {
-      setConnectFourBoard(human.board); setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); return;
+      setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); return;
     }
-    const legal = Array.from({length:7},(_,col)=>col).filter(col=>human.board[col] === '');
-    const findWinningColumn = (board, mark) => legal.find(col => { const move=connectFourDrop(board,col,mark); return move.index >= 0 && connectFourWinner(move.board,mark); });
-    let botColumn = findWinningColumn(human.board, 'Y');
-    if (botColumn == null) botColumn = findWinningColumn(human.board, 'R');
-    if (botColumn == null) {
-      const available = [3,2,4,1,5,0,6].filter(col=>legal.includes(col));
-      botColumn = available[Math.floor(Math.random() * Math.min(3, available.length))] ?? available[0];
-    }
-    const bot = connectFourDrop(human.board, botColumn, 'Y');
-    setConnectFourBoard(bot.board);
-    if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
-    else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
-    else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
+    setConnectFourThinking(true);
+    setConnectFourNotice('GRIN Bot is thinking…');
+    window.setTimeout(() => {
+      const legal = Array.from({length:7},(_,col)=>col).filter(col=>human.board[col] === '');
+      const findWinningColumn = (board, mark) => legal.find(col => { const move=connectFourDrop(board,col,mark); return move.index >= 0 && connectFourWinner(move.board,mark); });
+      let botColumn = findWinningColumn(human.board, 'Y');
+      if (botColumn == null) botColumn = findWinningColumn(human.board, 'R');
+      if (botColumn == null) {
+        const available = [3,2,4,1,5,0,6].filter(col=>legal.includes(col));
+        botColumn = available[Math.floor(Math.random() * Math.min(3, available.length))] ?? available[0];
+      }
+      const bot = connectFourDrop(human.board, botColumn, 'Y');
+      setConnectFourBoard(bot.board);
+      setConnectFourThinking(false);
+      if (connectFourWinner(bot.board, 'Y')) { setConnectFourOver(true); setConnectFourNotice('GRIN Bot got four in a row. Try again!'); }
+      else if (bot.board.every(Boolean)) { setConnectFourOver(true); setConnectFourNotice('It’s a draw! Start another round.'); }
+      else setConnectFourNotice('GRIN Bot played. Your turn — choose a column.');
+    }, 850);
   }
 
   function createOnlinePenaltyRoom() {
@@ -2394,7 +2402,7 @@ export default function App() {
       <section className="connect-four-hero"><div><span className="connect-four-kicker"><i/> GRIN ARCADE · STRATEGY</span><h2>Connect <em>Four</em></h2><p>Read the board. Block the threat. Line up four to win.</p></div><div className="connect-four-hero-art" aria-hidden="true"><i/><i/><i/><i/></div></section>
       <div className="connect-four-matchbar"><span><i className="disc-red"/> YOU <b>RED</b></span><span className="connect-four-vs">VS</span><span><i className="disc-yellow"/> GRIN BOT <b>GOLD</b></span></div>
       <div className="connect-four-board-shell"><div className="connect-four-board" role="group" aria-label="Connect Four board">
-        {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
+        {Array.from({length:7},(_,col)=><button key={col} type="button" className="connect-four-drop" onClick={()=>playConnectFour(col)} disabled={connectFourOver||connectFourThinking||connectFourBoard[col]!==''} aria-label={'Drop disc in column '+(col+1)}>↓</button>)}
         {connectFourBoard.map((cell,index)=><div key={index} className={'connect-four-cell'+(cell?' '+(cell==='R'?'disc-red':'disc-yellow'):'')} role="img" aria-label={cell==='R'?'Red disc':cell==='Y'?'Yellow disc':'Empty space'} />)}
       </div></div>
       <p className="connect-four-status" aria-live="polite">{connectFourNotice}</p>
