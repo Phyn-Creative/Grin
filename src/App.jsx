@@ -36,6 +36,12 @@ export default function App() {
   const [snakeDirection, setSnakeDirection] = useState('right');
   const [snakeRunning, setSnakeRunning] = useState(false);
   const [snakeScore, setSnakeScore] = useState(0);
+  const [snakeOpponentBody, setSnakeOpponentBody] = useState([141,142,143]);
+  const [snakeOpponentScore, setSnakeOpponentScore] = useState(0);
+  const [snakeOpponentDirection, setSnakeOpponentDirection] = useState('left');
+  const snakeOpponentBodyRef = useRef([141,142,143]);
+  const snakeOpponentDirectionRef = useRef('left');
+  const snakeOpponentScoreRef = useRef(0);
   const [snakeNotice, setSnakeNotice] = useState('Press Start Snake to play.');
   const [snakeRoomCode, setSnakeRoomCode] = useState('');
   const [snakeRoomRole, setSnakeRoomRole] = useState('');
@@ -63,44 +69,46 @@ export default function App() {
   snakeFoodRef.current = snakeFood;
   snakeDirectionRef.current = snakeDirection;
   snakeScoreRef.current = snakeScore;
+  snakeOpponentBodyRef.current = snakeOpponentBody;
+  snakeOpponentDirectionRef.current = snakeOpponentDirection;
+  snakeOpponentScoreRef.current = snakeOpponentScore;
   useEffect(() => {
     if (active !== 'games' || selectedGrinGame !== 'snake' || !snakeRunning || (snakeRoomCode && snakeRoomRole !== 'host')) return;
-    const timer = window.setInterval(() => {
-      const body = snakeBodyRef.current;
-      const head = body[0];
-      const direction = snakeDirectionRef.current;
-      const x = head % 16;
-      const y = Math.floor(head / 16);
-      const nextHead = direction === 'right' ? (x < 15 ? head + 1 : -1)
-        : direction === 'left' ? (x > 0 ? head - 1 : -1)
-        : direction === 'down' ? (y < 11 ? head + 16 : -1)
-        : (y > 0 ? head - 16 : -1);
-      const eating = nextHead === snakeFoodRef.current;
-      const occupied = eating ? body : body.slice(0, -1);
-      if (nextHead < 0 || occupied.includes(nextHead)) {
-        setSnakeRunning(false);
-        setSnakeNotice('Game over! Score: ' + snakeScoreRef.current + '. Press Play again to restart.');
-        if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body,food:snakeFoodRef.current,direction,running:false,score:snakeScoreRef.current,notice:'Game over! Host snake crashed.'}});
+    const step = (body, direction, otherBody) => {
+      const head=body[0], x=head%16, y=Math.floor(head/16);
+      const nextHead=direction==='right'?(x<15?head+1:-1):direction==='left'?(x>0?head-1:-1):direction==='down'?(y<11?head+16:-1):(y>0?head-16:-1);
+      const eating=nextHead===snakeFoodRef.current, occupied=eating?body:body.slice(0,-1);
+      if(nextHead<0||occupied.includes(nextHead)||otherBody.includes(nextHead))return {dead:true,body,eating:false};
+      const nextBody=[nextHead,...body];if(!eating)nextBody.pop();return {dead:false,body:nextBody,eating};
+    };
+    const timer=window.setInterval(()=>{
+      const body=snakeBodyRef.current,direction=snakeDirectionRef.current;
+      if(snakeRoomCode){
+        const rivalBody=snakeOpponentBodyRef.current,rivalDirection=snakeOpponentDirectionRef.current;
+        const player=step(body,direction,rivalBody),rival=step(rivalBody,rivalDirection,body);
+        let food=snakeFoodRef.current,playerScore=snakeScoreRef.current,rivalScore=snakeOpponentScoreRef.current;
+        if(player.dead||rival.dead){
+          setSnakeRunning(false);
+          const notice=player.dead&&rival.dead?'Draw! Both snakes crashed.':player.dead?'Arena over — your opponent wins!':'Arena over — you win!';
+          snakeNoticeRef.current=notice;setSnakeNotice(notice);
+          snakeChannelRef.current?.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,hostBody:player.body,guestBody:rival.body,hostDirection:direction,guestDirection:rivalDirection,hostScore:playerScore,guestScore:rivalScore,food,running:false,score:playerScore,notice}});
+          return;
+        }
+        if(player.eating)playerScore++;if(rival.eating)rivalScore++;
+        if(player.eating||rival.eating){const occupied=[...player.body,...rival.body];do{food=Math.floor(Math.random()*192);}while(occupied.includes(food));}
+        snakeBodyRef.current=player.body;snakeOpponentBodyRef.current=rival.body;snakeScoreRef.current=playerScore;snakeOpponentScoreRef.current=rivalScore;snakeFoodRef.current=food;
+        setSnakeBody(player.body);setSnakeOpponentBody(rival.body);setSnakeScore(playerScore);setSnakeOpponentScore(rivalScore);setSnakeFood(food);
+        if(player.eating||rival.eating)setSnakeNotice(player.eating&&rival.eating?'Both players scored!':player.eating?'You scored!':'Opponent scored!');
+        snakeChannelRef.current?.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,hostBody:player.body,guestBody:rival.body,hostDirection:direction,guestDirection:rivalDirection,hostScore:playerScore,guestScore:rivalScore,food,running:true,score:playerScore,notice:'Arena live — compete for the fruit!'}});
         return;
       }
-      const nextBody = [nextHead, ...body];
-      if (!eating) nextBody.pop();
-      snakeBodyRef.current = nextBody;
-      setSnakeBody(nextBody);
-      if (eating) {
-        const nextScore = snakeScoreRef.current + 1;
-        snakeScoreRef.current = nextScore;
-        setSnakeScore(nextScore);
-        let nextFood = Math.floor(Math.random() * 192);
-        while (nextBody.includes(nextFood)) nextFood = Math.floor(Math.random() * 192);
-        snakeFoodRef.current = nextFood;
-        setSnakeFood(nextFood);
-        setSnakeNotice('Nice! Keep going.');
-      }
-      if (snakeRoomCode && snakeChannelRef.current) snakeChannelRef.current.send({type:'broadcast',event:'snake-state',payload:{room:snakeRoomCode,body:nextBody,food:snakeFoodRef.current,direction:snakeDirectionRef.current,running:true,score:snakeScoreRef.current,notice:eating?'Nice! Keep going.':'Multiplayer arena is live.'}});
-    }, 145);
-    return () => window.clearInterval(timer);
-  }, [active, selectedGrinGame, snakeRunning, snakeRoomCode, snakeRoomRole]);
+      const next=step(body,direction,[]);
+      if(next.dead){setSnakeRunning(false);setSnakeNotice('Game over! Score: '+snakeScoreRef.current+'. Press Play again to restart.');return;}
+      snakeBodyRef.current=next.body;setSnakeBody(next.body);
+      if(next.eating){const score=snakeScoreRef.current+1;snakeScoreRef.current=score;setSnakeScore(score);let food;do{food=Math.floor(Math.random()*192);}while(next.body.includes(food));snakeFoodRef.current=food;setSnakeFood(food);setSnakeNotice('Nice! Keep going.');}
+    },180);
+    return ()=>window.clearInterval(timer);
+  },[active,selectedGrinGame,snakeRunning,snakeRoomCode,snakeRoomRole]);
 
   useEffect(() => {
     if (active !== 'games' || selectedGrinGame !== 'snake') return;
