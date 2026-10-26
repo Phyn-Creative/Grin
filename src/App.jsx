@@ -41,6 +41,14 @@ export default function App() {
   const [snakeRoomRole, setSnakeRoomRole] = useState('');
   const [snakeJoinCode, setSnakeJoinCode] = useState('');
   const snakeChannelRef = useRef(null);
+  const [memoryCards, setMemoryCards] = useState(['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5));
+  const [memoryFlipped, setMemoryFlipped] = useState([]);
+  const [memoryMatched, setMemoryMatched] = useState([]);
+  const [memoryMoves, setMemoryMoves] = useState(0);
+  const [memoryNotice, setMemoryNotice] = useState('Find all six matching pairs.');
+  const [rpsChoice, setRpsChoice] = useState('');
+  const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
+  const [rpsScore, setRpsScore] = useState({wins:0,draws:0,losses:0});
   const snakeBodyRef = useRef(snakeBody);
   const snakeFoodRef = useRef(snakeFood);
   const snakeDirectionRef = useRef(snakeDirection);
@@ -207,6 +215,31 @@ export default function App() {
       }
     }
   },[]);
+
+  function startMemoryGame() {
+    setMemoryCards(['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5));
+    setMemoryFlipped([]); setMemoryMatched([]); setMemoryMoves(0); setMemoryNotice('Find all six matching pairs.');
+  }
+  function flipMemoryCard(index) {
+    if (memoryFlipped.includes(index) || memoryMatched.includes(index) || memoryFlipped.length >= 2) return;
+    const next=[...memoryFlipped,index]; setMemoryFlipped(next);
+    if (next.length===2) {
+      setMemoryMoves(m=>m+1);
+      if (memoryCards[next[0]].emoji===memoryCards[next[1]].emoji) {
+        const matched=[...memoryMatched,...next]; setMemoryMatched(matched); setMemoryFlipped([]);
+        setMemoryNotice(matched.length===memoryCards.length?'You matched every pair! 🎉':'Match found! Keep going.');
+      } else setMemoryNotice('Not a match — try another pair.');
+    }
+  }
+  function playRockPaperScissors(choice) {
+    const options=['rock','paper','scissors'];
+    const bot=options[Math.floor(Math.random()*options.length)];
+    const result=choice===bot?'draw':((choice==='rock'&&bot==='scissors')||(choice==='paper'&&bot==='rock')||(choice==='scissors'&&bot==='paper'))?'win':'loss';
+    setRpsChoice(choice);
+    setRpsResult('You chose '+choice+' · GRIN Bot chose '+bot+'. '+(result==='draw'?'It’s a draw!':result==='win'?'You win this round!':'GRIN Bot wins this round.'));
+    setRpsScore(s=>({...s,wins:s.wins+(result==='win'?1:0),draws:s.draws+(result==='draw'?1:0),losses:s.losses+(result==='loss'?1:0)}));
+  }
+  function resetRockPaperScissors() { setRpsChoice(''); setRpsResult('Choose rock, paper or scissors to play against GRIN Bot.'); setRpsScore({wins:0,draws:0,losses:0}); }
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [ownPostMenuId, setOwnPostMenuId] = useState(null);
@@ -1718,6 +1751,8 @@ export default function App() {
     <div className="grin-game-picker" role="group" aria-label="Choose a game">
       <button type="button" className={selectedGrinGame === 'ttt' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('ttt')}>Tic-Tac-Toe</button>
       <button type="button" className={selectedGrinGame === 'snake' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('snake')}>Snake</button>
+      <button type="button" className={selectedGrinGame === 'memory' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('memory')}>Memory Match</button>
+      <button type="button" className={selectedGrinGame === 'rps' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('rps')}>Rock Paper Scissors</button>
     </div>
     {selectedGrinGame === 'ttt' ? <>
       <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
@@ -1725,7 +1760,7 @@ export default function App() {
       <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
       <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button>{gameRoomCode&&<button type="button" className="secondary-btn" onClick={exitGrinGameRoom}>Exit room</button>}</div>
       <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
-    </> : <>
+    </> : selectedGrinGame === 'snake' ? <>
       <div className="feed-head"><div><h2>Snake</h2><p>{snakeRoomCode ? 'Snake Arena · Room '+snakeRoomCode+' · '+(snakeRoomRole==='host'?'You are hosting':'You are a challenger') : 'Eat the glowing fruit, grow longer, and avoid the walls and your own tail.'}</p></div><Trophy size={25}/></div>
       <div className="snake-score">Score <strong>{snakeScore}</strong>{snakeRoomCode&&<span> · {snakeRoomRole==='host'?'Host':'Challenger'}</span>}</div>
       <div className="profile-form">
@@ -1751,6 +1786,16 @@ export default function App() {
         <button type="button" aria-label="Move down" onClick={()=>steerGrinSnake('down')}>↓</button>
         <button type="button" aria-label="Move right" onClick={()=>steerGrinSnake('right')}>→</button>
       </div>
+    </> : selectedGrinGame === 'memory' ? <>
+      <div className="feed-head"><div><h2>Memory Match</h2><p>Find all six matching fruit pairs in as few moves as possible.</p></div><Trophy size={25}/></div>
+      <div className="memory-game-board" role="group" aria-label="Memory match cards">{memoryCards.map((card,index)=><button type="button" key={card.id} className={'memory-card'+(memoryFlipped.includes(index)||memoryMatched.includes(index)?' revealed':'')+(memoryMatched.includes(index)?' matched':'')} onClick={()=>flipMemoryCard(index)} disabled={memoryMatched.includes(index)||memoryFlipped.includes(index)||memoryFlipped.length>=2}>{memoryFlipped.includes(index)||memoryMatched.includes(index)?card.emoji:'?'}</button>)}</div>
+      <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/6</strong></p>
+      <div className="card-actions"><button type="button" className="primary" onClick={startMemoryGame}>Restart Memory Match</button></div>
+    </> : <>
+      <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>Quick rounds against GRIN Bot. Best of luck!</p></div><Trophy size={25}/></div>
+      <div className="rps-choices">{[{id:'rock',emoji:'✊',label:'Rock'},{id:'paper',emoji:'✋',label:'Paper'},{id:'scissors',emoji:'✌️',label:'Scissors'}].map(item=><button type="button" key={item.id} className={'rps-choice'+(rpsChoice===item.id?' selected':'')} onClick={()=>playRockPaperScissors(item.id)}><span>{item.emoji}</span><strong>{item.label}</strong></button>)}</div>
+      <p className="game-turn-status" aria-live="polite">{rpsResult}</p><div className="rps-score"><span>Wins <strong>{rpsScore.wins}</strong></span><span>Draws <strong>{rpsScore.draws}</strong></span><span>Losses <strong>{rpsScore.losses}</strong></span></div>
+      <div className="card-actions"><button type="button" className="secondary-btn" onClick={resetRockPaperScissors}>Reset score</button></div>
     </>}
   </section>
   <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online Tic-Tac-Toe or Snake room, then copy its invitation link to share with friends.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
