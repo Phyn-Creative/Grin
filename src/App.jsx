@@ -680,7 +680,25 @@ export default function App() {
     }
     if (notification.story_id) { const {data:story}=await supabase.from('grin_stories').select('id,author_id,caption,media_url,media_type,created_at,expires_at,grin_profiles(id,username,display_name,avatar_url)').eq('id',notification.story_id).maybeSingle(); if(story&&new Date(story.expires_at)>new Date()){setStories(current=>[story,...current.filter(item=>item.id!==story.id)]);setActive('status');setActiveStatusAuthorId(story.author_id);setActiveStatusIndex(0);}else setActive('status');return; }
     if (notification.post_id) { setSharedPostId(notification.post_id);setActive('discover');return; }
-    if (notification.conversation_id) {const chat=chats.find(item=>item.id===notification.conversation_id);if(chat){setSelected(chat);setChatOpen(true);}setActive('chats');return;}
+    if (notification.conversation_id) {
+      let chat=chats.find(item=>item.id===notification.conversation_id);
+      if(!chat){
+        const {data,error}=await supabase.rpc('grin_get_my_conversation_list');
+        if(!error&&Array.isArray(data)){
+          const row=data.find(item=>item.conversation_id===notification.conversation_id);
+          if(row){
+            const name=row.conversation_title||row.peer_display_name||row.peer_username||'GRIN chat';
+            const preview=row.last_message_at?(row.last_message_media_type==='audio'?'🎙 Voice note':row.last_message_media_type==='image'?'📷 Photo':row.last_message_media_type==='video'?'🎥 Video':row.last_message_body||'Message'):'Start a conversation.';
+            chat={id:row.conversation_id,name,preview,initials:name.slice(0,2).toUpperCase(),avatar_url:row.peer_avatar_url||null,peer_id:row.peer_id||null,peer_username:row.peer_username||null,kind:row.conversation_kind||'direct',lastMessageAt:row.last_message_at||row.joined_at};
+            setChats(current=>[chat,...current.filter(item=>item.id!==chat.id&&item.id!=='welcome')]);
+          }
+        }
+      }
+      if(chat){setSelected(chat);setChatOpen(true);}
+      else setSearchNotice('Could not find that conversation. Refresh your chats and try again.');
+      setActive('chats');
+      return;
+    }
     if (notification.actor_id && notification.grin_profiles) {
       await openPersonProfile({id:notification.actor_id,...notification.grin_profiles});
       return;
