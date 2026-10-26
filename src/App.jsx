@@ -30,11 +30,100 @@ export default function App() {
   const [gameNotice, setGameNotice] = useState('');
   const [gameInviteTarget, setGameInviteTarget] = useState('');
   const [gameInviteCommunity, setGameInviteCommunity] = useState('');
+  const [selectedGrinGame, setSelectedGrinGame] = useState('ttt');
+  const [snakeBody, setSnakeBody] = useState([34, 33, 32]);
+  const [snakeFood, setSnakeFood] = useState(105);
+  const [snakeDirection, setSnakeDirection] = useState('right');
+  const [snakeRunning, setSnakeRunning] = useState(false);
+  const [snakeScore, setSnakeScore] = useState(0);
+  const [snakeNotice, setSnakeNotice] = useState('Press Start Snake to play.');
+  const snakeBodyRef = useRef(snakeBody);
+  const snakeFoodRef = useRef(snakeFood);
+  const snakeDirectionRef = useRef(snakeDirection);
+  const snakeScoreRef = useRef(snakeScore);
   const gameChannelRef = useRef(null);
   const gameBoardRef = useRef(gameBoard);
   const gameTurnRef = useRef(gameTurn);
   gameBoardRef.current = gameBoard;
   gameTurnRef.current = gameTurn;
+  snakeBodyRef.current = snakeBody;
+  snakeFoodRef.current = snakeFood;
+  snakeDirectionRef.current = snakeDirection;
+  snakeScoreRef.current = snakeScore;
+  useEffect(() => {
+    if (active !== 'games' || selectedGrinGame !== 'snake' || !snakeRunning) return;
+    const timer = window.setInterval(() => {
+      const body = snakeBodyRef.current;
+      const head = body[0];
+      const direction = snakeDirectionRef.current;
+      const x = head % 16;
+      const y = Math.floor(head / 16);
+      const nextHead = direction === 'right' ? (x < 15 ? head + 1 : -1)
+        : direction === 'left' ? (x > 0 ? head - 1 : -1)
+        : direction === 'down' ? (y < 11 ? head + 16 : -1)
+        : (y > 0 ? head - 16 : -1);
+      const eating = nextHead === snakeFoodRef.current;
+      const occupied = eating ? body : body.slice(0, -1);
+      if (nextHead < 0 || occupied.includes(nextHead)) {
+        setSnakeRunning(false);
+        setSnakeNotice('Game over! Score: ' + snakeScoreRef.current + '. Press Play again to restart.');
+        return;
+      }
+      const nextBody = [nextHead, ...body];
+      if (!eating) nextBody.pop();
+      snakeBodyRef.current = nextBody;
+      setSnakeBody(nextBody);
+      if (eating) {
+        const nextScore = snakeScoreRef.current + 1;
+        snakeScoreRef.current = nextScore;
+        setSnakeScore(nextScore);
+        let nextFood = Math.floor(Math.random() * 192);
+        while (nextBody.includes(nextFood)) nextFood = Math.floor(Math.random() * 192);
+        snakeFoodRef.current = nextFood;
+        setSnakeFood(nextFood);
+        setSnakeNotice('Nice! Keep going.');
+      }
+    }, 145);
+    return () => window.clearInterval(timer);
+  }, [active, selectedGrinGame, snakeRunning]);
+
+  useEffect(() => {
+    if (active !== 'games' || selectedGrinGame !== 'snake') return;
+    const onKeyDown = event => {
+      const keys = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
+      const next = keys[event.key];
+      if (!next) return;
+      event.preventDefault();
+      const current = snakeDirectionRef.current;
+      const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' };
+      if (next !== opposite[current]) {
+        snakeDirectionRef.current = next;
+        setSnakeDirection(next);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [active, selectedGrinGame]);
+
+  function startGrinSnake() {
+    const body = [34, 33, 32];
+    let food = Math.floor(Math.random() * 192);
+    while (body.includes(food)) food = Math.floor(Math.random() * 192);
+    snakeBodyRef.current = body;
+    snakeFoodRef.current = food;
+    snakeDirectionRef.current = 'right';
+    snakeScoreRef.current = 0;
+    setSnakeBody(body); setSnakeFood(food); setSnakeDirection('right');
+    setSnakeScore(0); setSnakeRunning(true); setSnakeNotice('Use the arrow keys or on-screen controls.');
+  }
+  function steerGrinSnake(next) {
+    const opposite = { up: 'down', down: 'up', left: 'right', right: 'left' };
+    if (next !== opposite[snakeDirectionRef.current]) {
+      snakeDirectionRef.current = next;
+      setSnakeDirection(next);
+    }
+  }
+
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [ownPostMenuId, setOwnPostMenuId] = useState(null);
   const [searchNotice, setSearchNotice] = useState('');
@@ -1528,11 +1617,33 @@ export default function App() {
 : active === 'games' ? <div className="feed-page grin-games-page">
   <div className="feed-head"><div><h1><Gamepad2 size={27} style={{verticalAlign:'middle',marginRight:8}}/>GRIN Games</h1><p>Take a break, challenge your people, and play together.</p></div></div>
   <section className="profile-card grin-game-card">
-    <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
-    <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
-    <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
-    <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
-    <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
+    <div className="grin-game-picker" role="group" aria-label="Choose a game">
+      <button type="button" className={selectedGrinGame === 'ttt' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('ttt')}>Tic-Tac-Toe</button>
+      <button type="button" className={selectedGrinGame === 'snake' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('snake')}>Snake</button>
+    </div>
+    {selectedGrinGame === 'ttt' ? <>
+      <div className="feed-head"><div><h2>Tic-Tac-Toe</h2><p>{gameRoomCode?'Room '+gameRoomCode+' · You play as '+gameMark:'Play against GRIN Bot, or create an online room to challenge another player.'}</p></div><Trophy size={25}/></div>
+      <div className="grin-tictactoe-board" role="group" aria-label="Tic-Tac-Toe board">{gameBoard.map((cell,index)=><button type="button" key={index} className="grin-game-cell" aria-label={'Square '+(index+1)+(cell?', '+cell:' empty')} onClick={()=>playGrinGameCell(index)} disabled={!!cell||!!grinGameWinner(gameBoard)||(!!gameRoomCode&&gameTurn!==gameMark)}>{cell||' '}</button>)}</div>
+      <p className="game-turn-status" aria-live="polite">{gameNotice||('Turn: '+gameTurn)}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={resetGrinGame}>Play again</button><button type="button" className="secondary-btn" onClick={startGrinGameRoom}>Create online room</button></div>
+      <form className="profile-form" onSubmit={e=>{e.preventDefault();joinGrinGameRoom();}}><label>Join a room</label><input value={gameJoinCode} onChange={e=>setGameJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room as O</button></form>
+    </> : <>
+      <div className="feed-head"><div><h2>Snake</h2><p>Eat the glowing fruit, grow longer, and avoid the walls and your own tail.</p></div><Trophy size={25}/></div>
+      <div className="snake-score">Score <strong>{snakeScore}</strong></div>
+      <div className="grin-snake-board" role="img" aria-label={'Snake game board. Score '+snakeScore}>
+        {Array.from({length:192},(_,index)=><span key={index} className={'snake-cell'+(snakeBody.includes(index)?' snake-body':'')+(snakeBody[0]===index?' snake-head':'')+(snakeFood===index?' snake-food':'')} />)}
+      </div>
+      <p className="game-turn-status" aria-live="polite">{snakeNotice}</p>
+      <div className="card-actions"><button type="button" className="primary" onClick={startGrinSnake}>{snakeRunning?'Restart Snake':'Start Snake / Play again'}</button><button type="button" className="secondary-btn" onClick={()=>setSnakeRunning(false)}>Pause</button></div>
+      <div className="snake-controls" aria-label="Snake direction controls">
+        <span />
+        <button type="button" aria-label="Move up" onClick={()=>steerGrinSnake('up')}>↑</button>
+        <span />
+        <button type="button" aria-label="Move left" onClick={()=>steerGrinSnake('left')}>←</button>
+        <button type="button" aria-label="Move down" onClick={()=>steerGrinSnake('down')}>↓</button>
+        <button type="button" aria-label="Move right" onClick={()=>steerGrinSnake('right')}>→</button>
+      </div>
+    </>}
   </section>
   <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online room, then copy its link or share it directly from your device.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
     <label>Invite through a conversation</label><select value={gameInviteTarget} onChange={e=>{setGameInviteTarget(e.target.value);if(e.target.value)setGameInviteCommunity('');}}><option value="">Choose a chat or group…</option>{chats.filter(chat=>chat.id!=='welcome').map(chat=><option key={chat.id} value={chat.id}>{chat.name}</option>)}</select>
