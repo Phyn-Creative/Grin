@@ -360,7 +360,7 @@ export default function App() {
 
   async function reportPerson(person){
     if(!person?.id||person.id===session.user.id)return;
-    const choice=window.prompt('Why are you reporting this account?\\n1. Harassment or bullying\\n2. Spam or scams\\n3. Impersonation\\n4. Inappropriate content\\n5. Other');
+    const choice=window.prompt('Why are you reporting this account?\n1. Harassment or bullying\n2. Spam or scams\n3. Impersonation\n4. Inappropriate content\n5. Other');
     if(choice===null)return;
     const index=Number(choice.trim())-1;
     if(!Number.isInteger(index)||index<0||index>4){setSafetyNotice('Choose a reason from 1 to 5 to submit a report.');return;}
