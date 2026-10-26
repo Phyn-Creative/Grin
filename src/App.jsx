@@ -56,6 +56,13 @@ export default function App() {
   const [rpsChoice, setRpsChoice] = useState('');
   const [rpsResult, setRpsResult] = useState('Choose rock, paper or scissors to play against GRIN Bot.');
   const [rpsScore, setRpsScore] = useState({wins:0,draws:0,losses:0});
+  const [rpsRoomCode,setRpsRoomCode]=useState('');
+  const [rpsRoomRole,setRpsRoomRole]=useState('');
+  const [rpsJoinCode,setRpsJoinCode]=useState('');
+  const [rpsOpponentChoice,setRpsOpponentChoice]=useState('');
+  const [rpsRoundWins,setRpsRoundWins]=useState({you:0,opponent:0});
+  const [rpsRoundResolved,setRpsRoundResolved]=useState(false);
+  const rpsChannelRef=useRef(null);
   const snakeBodyRef = useRef(snakeBody);
   const snakeFoodRef = useRef(snakeFood);
   const snakeDirectionRef = useRef(snakeDirection);
@@ -237,6 +244,28 @@ export default function App() {
     return()=>{if(snakeChannelRef.current===channel)snakeChannelRef.current=null;supabase.removeChannel(channel);};
   },[snakeRoomCode,session?.user?.id,selectedGrinGame,snakeRoomRole]);
 
+  useEffect(()=>{
+    if(!rpsRoomCode||!session?.user?.id||selectedGrinGame!=='rps')return;
+    const room=rpsRoomCode;
+    const channel=supabase.channel('grin-rps-'+room,{config:{broadcast:{self:false}}});rpsChannelRef.current=channel;
+    channel.on('broadcast',{event:'rps-choice'},({payload})=>{
+      if(payload?.room!==room||payload.player===rpsRoomRole||!['rock','paper','scissors'].includes(payload.choice))return;
+      setRpsOpponentChoice(payload.choice);
+    }).subscribe(status=>{if(status==='SUBSCRIBED')setRpsResult(rpsRoomRole==='host'?'Room ready. Waiting for your opponent to choose.':'Connected. Waiting for the host to choose.');});
+    return()=>{if(rpsChannelRef.current===channel)rpsChannelRef.current=null;supabase.removeChannel(channel);};
+  },[rpsRoomCode,rpsRoomRole,session?.user?.id,selectedGrinGame]);
+
+  useEffect(()=>{
+    if(!rpsRoomCode||!rpsChoice||!rpsOpponentChoice||rpsRoundResolved)return;
+    const own=rpsChoice,other=rpsOpponentChoice;
+    const result=own===other?'draw':((own==='rock'&&other==='scissors')||(own==='paper'&&other==='rock')||(own==='scissors'&&other==='paper'))?'win':'loss';
+    setRpsRoundResolved(true);
+    setRpsResult('You chose '+own+' · Opponent chose '+other+'. '+(result==='draw'?'It’s a draw!':result==='win'?'You win this round!':'Your opponent wins this round.'));
+    setRpsRoundWins(s=>({...s,you:s.you+(result==='win'?1:0),opponent:s.opponent+(result==='loss'?1:0)}));
+    const timer=window.setTimeout(()=>{setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsResult('Choose your next move.');},1400);
+    return()=>window.clearTimeout(timer);
+  },[rpsRoomCode,rpsChoice,rpsOpponentChoice,rpsRoundResolved]);
+
   function startMemoryGame() {
     setMemoryCards(['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5));
     setMemoryFlipped([]); setMemoryMatched([]); setMemoryMoves(0); setMemoryNotice('Find all six matching pairs.');
@@ -252,7 +281,36 @@ export default function App() {
       } else { setMemoryNotice('Not a match — try another pair.'); window.setTimeout(()=>setMemoryFlipped([]),700); }
     }
   }
+  function createRpsRoom(){
+    const code=crypto.randomUUID().replace(/-/g,'').slice(0,8).toUpperCase();
+    setRpsRoomCode(code);setRpsRoomRole('host');setRpsJoinCode('');setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsRoundWins({you:0,opponent:0});setSelectedGrinGame('rps');setActive('games');
+    const params=new URLSearchParams(window.location.search);params.set('game','rps');params.set('room',code);window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+    setRpsResult('Room created. Share the link and play best of five.');
+  }
+  function joinRpsRoom(){
+    const code=rpsJoinCode.trim().toUpperCase();
+    if(!/^[A-Z0-9]{6,12}$/.test(code)){setRpsResult('Enter a valid 6–12 character room code.');return;}
+    setRpsRoomCode(code);setRpsRoomRole('guest');setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsRoundWins({you:0,opponent:0});setSelectedGrinGame('rps');setActive('games');
+    const params=new URLSearchParams(window.location.search);params.set('game','rps');params.set('room',code);window.history.replaceState({},'',window.location.pathname+'?'+params.toString()+window.location.hash);
+    setRpsResult('Joining match…');
+  }
+  function exitRpsRoom(){
+    if(rpsChannelRef.current){supabase.removeChannel(rpsChannelRef.current);rpsChannelRef.current=null;}
+    setRpsRoomCode('');setRpsRoomRole('');setRpsJoinCode('');setRpsChoice('');setRpsOpponentChoice('');setRpsRoundResolved(false);setRpsRoundWins({you:0,opponent:0});
+    setRpsResult('Choose rock, paper or scissors to play against GRIN Bot.');
+    const params=new URLSearchParams(window.location.search);params.delete('game');params.delete('room');const query=params.toString();window.history.replaceState({},'',window.location.pathname+(query?'?'+query:'')+window.location.hash);
+  }
+  async function copyRpsRoomLink(){
+    if(!rpsRoomCode)return;const link=window.location.origin+window.location.pathname+'?game=rps&room='+encodeURIComponent(rpsRoomCode);
+    try{await navigator.clipboard.writeText(link);setRpsResult('Match link copied. Share it with your friend.');}catch{window.prompt('Copy your match link:',link);}
+  }
   function playRockPaperScissors(choice) {
+    if(rpsRoomCode){
+      if(rpsRoundResolved||rpsChoice)return;
+      setRpsChoice(choice);setRpsResult('You chose '+choice+'. Waiting for your opponent…');
+      rpsChannelRef.current?.send({type:'broadcast',event:'rps-choice',payload:{room:rpsRoomCode,player:rpsRoomRole,choice}});
+      return;
+    }
     const options=['rock','paper','scissors'];
     const bot=options[Math.floor(Math.random()*options.length)];
     const result=choice===bot?'draw':((choice==='rock'&&bot==='scissors')||(choice==='paper'&&bot==='rock')||(choice==='scissors'&&bot==='paper'))?'win':'loss';
@@ -862,6 +920,10 @@ export default function App() {
   }
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
+    if(params.get('game')==='rps'&&params.get('room')){
+      const code=(params.get('room')||'').toUpperCase();
+      if(/^[A-Z0-9]{6,12}$/.test(code)){setRpsRoomCode(code);setRpsRoomRole('guest');setSelectedGrinGame('rps');setActive('games');setRpsResult('You have been invited to a Rock Paper Scissors match.');}
+    }
     if(params.get('game')==='ttt'&&params.get('room')){
       const code=(params.get('room')||'').toUpperCase();
       if(/^[A-Z0-9]{6,12}$/.test(code)){setGameRoomCode(code);setGameMark('O');setActive('games');setGameNotice('You have been invited. You play O.');}
@@ -1806,10 +1868,11 @@ export default function App() {
       <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/6</strong></p>
       <div className="card-actions"><button type="button" className="primary" onClick={startMemoryGame}>Restart Memory Match</button></div>
     </> : <>
-      <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>Quick rounds against GRIN Bot. Best of luck!</p></div><Trophy size={25}/></div>
-      <div className="rps-choices">{[{id:'rock',emoji:'✊',label:'Rock'},{id:'paper',emoji:'✋',label:'Paper'},{id:'scissors',emoji:'✌️',label:'Scissors'}].map(item=><button type="button" key={item.id} className={'rps-choice'+(rpsChoice===item.id?' selected':'')} onClick={()=>playRockPaperScissors(item.id)}><span>{item.emoji}</span><strong>{item.label}</strong></button>)}</div>
-      <p className="game-turn-status" aria-live="polite">{rpsResult}</p><div className="rps-score"><span>Wins <strong>{rpsScore.wins}</strong></span><span>Draws <strong>{rpsScore.draws}</strong></span><span>Losses <strong>{rpsScore.losses}</strong></span></div>
-      <div className="card-actions"><button type="button" className="secondary-btn" onClick={resetRockPaperScissors}>Reset score</button></div>
+      <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>{rpsRoomCode?'Online match · Room '+rpsRoomCode+' · '+(rpsRoomRole==='host'?'Host':'Challenger'):'Play quick rounds against GRIN Bot or challenge a friend.'}</p></div><Trophy size={25}/></div>
+      {rpsRoomCode?<div className="profile-form"><p>Room code: <strong>{rpsRoomCode}</strong></p><div className="card-actions"><button type="button" className="secondary-btn" onClick={copyRpsRoomLink}>Copy match link</button><button type="button" className="secondary-btn" onClick={exitRpsRoom}>Exit room</button></div><p>Best of five: first to three wins takes the match.</p></div>:<div className="profile-form"><button type="button" className="primary" onClick={createRpsRoom}>Create online match</button><form onSubmit={e=>{e.preventDefault();joinRpsRoom();}}><label>Join a match</label><input value={rpsJoinCode} onChange={e=>setRpsJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>}
+      <div className="rps-choices">{[{id:'rock',emoji:'✊',label:'Rock'},{id:'paper',emoji:'✋',label:'Paper'},{id:'scissors',emoji:'✌️',label:'Scissors'}].map(item=><button type="button" key={item.id} disabled={!!rpsRoomCode&&(!!rpsChoice||rpsRoundResolved)} className={'rps-choice'+(rpsChoice===item.id?' selected':'')} onClick={()=>playRockPaperScissors(item.id)}><span>{item.emoji}</span><strong>{item.label}</strong></button>)}</div>
+      <p className="game-turn-status" aria-live="polite">{rpsResult}</p>{rpsRoomCode?<div className="rps-score"><span>Your wins <strong>{rpsRoundWins.you}</strong></span><span>Opponent <strong>{rpsRoundWins.opponent}</strong></span></div>:<div className="rps-score"><span>Wins <strong>{rpsScore.wins}</strong></span><span>Draws <strong>{rpsScore.draws}</strong></span><span>Losses <strong>{rpsScore.losses}</strong></span></div>}
+      <div className="card-actions"><button type="button" className="secondary-btn" onClick={()=>{resetRockPaperScissors();setRpsRoundWins({you:0,opponent:0});}}>Reset score</button></div>
     </>}
   </section>
   <section className="profile-card grin-game-invite-card"><h2>Invite people to play</h2><p>Create an online Tic-Tac-Toe or Snake room, then copy its invitation link to share with friends.</p>{gameRoomCode&&<><label>Game link</label><input aria-label="Game invitation link" readOnly value={window.location.origin+window.location.pathname+"?game=ttt&room="+encodeURIComponent(gameRoomCode)}/><div className="card-actions"><button type="button" className="primary" onClick={copyGrinGameLink}>Copy game link</button><button type="button" className="secondary-btn" onClick={shareGrinGameLink}>Share link…</button></div></>}
