@@ -43,17 +43,11 @@ createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Recovery: remove older service-worker caches that can keep a stale app shell
-// around after a deployment. Keep the app online-first while we investigate.
-if ('serviceWorker' in navigator) {
+// Keep the PWA service worker registered: background push depends on it.
+if ('serviceWorker' in navigator && window.isSecureContext) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations()
-      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
-      .catch(() => {});
-    if ('caches' in window) {
-      caches.keys()
-        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('grin-shell-')).map((key) => caches.delete(key))))
-        .catch(() => {});
-    }
-  });
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((registration) => registration.update().catch(() => {}))
+      .catch((error) => console.error('GRIN service worker registration failed:', error));
+  }, { once: true });
 }
