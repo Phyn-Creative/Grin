@@ -54,6 +54,7 @@ export default function App() {
   const [memoryFlipped, setMemoryFlipped] = useState([]);
   const [memoryMatched, setMemoryMatched] = useState([]);
   const [memoryMoves, setMemoryMoves] = useState(0);
+  const [memoryDifficulty, setMemoryDifficulty] = useState('normal');
   const [memoryNotice, setMemoryNotice] = useState('Find all six matching pairs.');
   const [memoryRoomCode,setMemoryRoomCode]=useState('');
   const [memoryRoomRole,setMemoryRoomRole]=useState('');
@@ -295,8 +296,11 @@ export default function App() {
   },[rpsRoomCode,rpsChoice,rpsOpponentChoice,rpsRoundResolved]);
 
   function startMemoryGame() {
-    const cards=['🍋','🍋','🍓','🍓','🍇','🍇','🍉','🍉','🥝','🥝','🍒','🍒'].map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5);
-    setMemoryCards(cards);setMemoryFlipped([]);setMemoryMatched([]);setMemoryMoves(0);setMemoryScores({host:0,guest:0});setMemoryTurn('host');setMemoryNotice('Find all six matching pairs.');
+    const pairCount=memoryDifficulty==='easy'?4:memoryDifficulty==='hard'?8:6;
+    const emojiPool=['🍋','🍓','🍇','🍉','🥝','🍒','🍊','🍍'];
+    const deck=emojiPool.slice(0,pairCount).flatMap(emoji=>[emoji,emoji]);
+    const cards=deck.map((emoji,id)=>({id,emoji})).sort(()=>Math.random()-.5);
+    setMemoryCards(cards);setMemoryFlipped([]);setMemoryMatched([]);setMemoryMoves(0);setMemoryScores({host:0,guest:0});setMemoryTurn('host');setMemoryNotice('Find all '+pairCount+' matching pairs.');
     if(memoryRoomCode&&memoryRoomRole==='host')memoryChannelRef.current?.send({type:'broadcast',event:'memory-state',payload:{room:memoryRoomCode,cards,flipped:[],matched:[],moves:0,scores:{host:0,guest:0},turn:'host',notice:'New Memory Match round started.'}});
   }
   function flipMemoryCard(index) {
@@ -1953,8 +1957,9 @@ export default function App() {
     </> : selectedGrinGame === 'memory' ? <>
       <div className="feed-head"><div><h2>Memory Match</h2><p>{memoryRoomCode?'Online match · Room '+memoryRoomCode+' · '+(memoryRoomRole==='host'?'Host':'Challenger'):'Find pairs solo or take turns with a friend.'}</p></div><Trophy size={25}/></div>
       {memoryRoomCode?<div className="profile-form"><p>Room code: <strong>{memoryRoomCode}</strong></p><p>Turn: <strong>{memoryTurn===memoryRoomRole?'Your turn':"Opponent's turn"}</strong> · You <strong>{memoryScores[memoryRoomRole]||0}</strong> pairs · Opponent <strong>{memoryScores[memoryRoomRole==='host'?'guest':'host']||0}</strong> pairs</p><div className="card-actions"><button type="button" className="secondary-btn" onClick={copyMemoryRoomLink}>Copy match link</button><button type="button" className="secondary-btn" onClick={exitMemoryRoom}>Exit room</button></div></div>:<div className="profile-form"><button type="button" className="primary" onClick={createMemoryRoom}>Create online match</button><form onSubmit={e=>{e.preventDefault();joinMemoryRoom();}}><label>Join a match</label><input value={memoryJoinCode} onChange={e=>setMemoryJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join match</button></form></div>}
+      {!memoryRoomCode&&<div className="grin-bot-difficulty grin-memory-difficulty"><label htmlFor="grin-memory-level">Memory Match difficulty</label><select id="grin-memory-level" value={memoryDifficulty} onChange={e=>setMemoryDifficulty(e.target.value)}><option value="easy">Easy · 4 pairs</option><option value="normal">Normal · 6 pairs</option><option value="hard">Hard · 8 pairs</option></select><small>{memoryDifficulty==='easy'?'A shorter round with four matching pairs.':memoryDifficulty==='normal'?'Six pairs for a balanced memory challenge.':'Eight pairs to test your focus and recall.'}</small></div>}
       <div className="memory-game-board" role="group" aria-label="Memory match cards">{memoryCards.map((card,index)=><button type="button" key={card.id} className={'memory-card'+(memoryFlipped.includes(index)||memoryMatched.includes(index)?' revealed':'')+(memoryMatched.includes(index)?' matched':'')} onClick={()=>flipMemoryCard(index)} disabled={memoryMatched.includes(index)||memoryFlipped.includes(index)||memoryFlipped.length>=2||(!!memoryRoomCode&&memoryTurn!==memoryRoomRole)}>{memoryFlipped.includes(index)||memoryMatched.includes(index)?card.emoji:'?'}</button>)}</div>
-      <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/6</strong>{memoryRoomCode?' · '+(memoryScores[memoryRoomRole]||0)+' points':''}</p>
+      <p className="game-turn-status" aria-live="polite">{memoryNotice}</p><p className="snake-score">Moves <strong>{memoryMoves}</strong> · Pairs <strong>{memoryMatched.length/2}/{memoryCards.length/2}</strong>{memoryRoomCode?' · '+(memoryScores[memoryRoomRole]||0)+' points':''}</p>
       <div className="card-actions"><button type="button" className="primary" onClick={startMemoryGame} disabled={!!memoryRoomCode&&memoryRoomRole!=='host'}>Restart Memory Match</button></div>
     </> : <>
       <div className="feed-head"><div><h2>Rock Paper Scissors</h2><p>{rpsRoomCode?'Online match · Room '+rpsRoomCode+' · '+(rpsRoomRole==='host'?'Host':'Challenger'):'Play quick rounds against GRIN Bot or challenge a friend.'}</p></div><Trophy size={25}/></div>
