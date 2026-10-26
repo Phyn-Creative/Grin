@@ -376,7 +376,7 @@ export default function App() {
   }
 
   function openPersonProfile(person){setProfileFollowed(false);setProfileFollowers(0);setProfileFollowing(0);setProfilePosts([]);setProfileView({type:'person',...person});}
-  async function messagePerson(person){if(!person?.id||person.id===session.user.id)return;const {data,error}=await supabase.rpc('grin_create_direct_conversation',{other_user:person.id});if(error||!data){setAuthError(error?.message||'Could not open this conversation. Please try again.');return;}const name=person.display_name||person.username||'GRIN user';const chat={id:data,name,preview:'Start a conversation.',initials:name.slice(0,2).toUpperCase(),avatar_url:person.avatar_url||null,peer_id:person.id,peer_username:person.username,kind:'direct'};setChats(current=>[chat,...current.filter(item=>item.id!==data)]);setSelected(chat);setChatOpen(true);setProfileView(null);setActive('chats');}
+  async function messagePerson(person){if(!person?.id||person.id===session.user.id)return;const {data,error}=await supabase.rpc('grin_create_direct_conversation',{other_user:person.id});if(error||!data){setSearchNotice('Could not open this conversation. Please try again.');return;}const name=person.display_name||person.username||'GRIN User';const chat={id:data,name,preview:'Start a conversation.',initials:name.slice(0,2).toUpperCase(),avatar_url:person.avatar_url||null,peer_id:person.id,peer_username:person.username,kind:'direct'};setChats(current=>current.some(item=>item.id===data)?current:[chat,...current.filter(item=>item.id!=='welcome')]);setSelected(chat);setChatOpen(true);setSearchNotice('');setProfileView(null);setActive('chats');}
   async function togglePersonFollow(person){const target=person||profileView;if(!target||target.type==='creator'||target.id===session.user.id)return false;const followed=person?followedIds.has(target.id):profileFollowed;const result=followed?await supabase.from('grin_follows').delete().eq('follower_id',session.user.id).eq('following_id',target.id):await supabase.from('grin_follows').insert({follower_id:session.user.id,following_id:target.id});if(result.error){setSearchNotice(followed?'Could not unfollow this person. Please try again.':'Could not follow this person. Please try again.');return false;}if(person)setFollowedIds(current=>{const updated=new Set(current);if(followed)updated.delete(target.id);else updated.add(target.id);return updated;});else setProfileFollowed(!followed);setSearchNotice('');return true;}
 
   async function searchExplore(queryValue = exploreQuery) {
@@ -975,11 +975,12 @@ export default function App() {
       return;
     }
     const { data, error } = await supabase.rpc('grin_create_direct_conversation', { other_user: person.id });
-    if (error) { setAuthError(error.message); return; }
-    const chat = { id: data, name: person.display_name || person.username, preview: 'Start a conversation.', initials: (person.display_name || person.username).slice(0, 2).toUpperCase(), avatar_url:person.avatar_url||null, peer_id:person.id, peer_username:person.username, kind:'direct' };
+    if (error || !data) { setSearchNotice('Could not open this conversation. Please try again.'); return; }
+    const chat = { id: data, name: person.display_name || person.username || 'GRIN User', preview: 'Start a conversation.', initials: (person.display_name || person.username || 'GR').slice(0, 2).toUpperCase(), avatar_url:person.avatar_url||null, peer_id:person.id, peer_username:person.username, kind:'direct' };
     setChats(current => current.some(x => x.id === chat.id) ? current : [chat, ...current.filter(x => x.id !== 'welcome')]);
     setSelected(chat);
     setChatOpen(true);
+    setSearchNotice('');
     setActive('chats');
     setPeople([]);
     setPersonSearch('');
