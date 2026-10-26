@@ -272,7 +272,7 @@ export default function App() {
     if (penaltyPhase === 'shoot') {
       const keeper = directions[Math.floor(Math.random() * directions.length)];
       const scored = keeper !== direction;
-      setPenaltyAnimation('shot-'+direction+(scored ? '-goal' : '-saved'));
+      setPenaltyAnimation('shot-'+direction+(scored ? '-goal' : '-saved')+'-keeper-'+keeper);
       setPenaltyLastResult(scored ? 'GOAL!' : 'SAVED!');
       setPenaltyPlayerGoals(penaltyPlayerGoals + (scored ? 1 : 0));
       setPenaltyPhase('save');
