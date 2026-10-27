@@ -2559,6 +2559,32 @@ export default function App() {
       </div>}
       <div className="card-actions"><button type="button" className="primary" onClick={resetPenaltyShootout}>{penaltyDone ? 'Play again' : 'Restart shootout'}</button></div>
       </>}
+    </> : selectedGrinGame === 'rps' ? <>
+      <section className="profile-card" style={{marginTop:14,padding:18,borderRadius:20,background:'linear-gradient(145deg,#111827,#27204b)',color:'#fff',border:'1px solid #373151'}}>
+        <div style={{fontSize:11,fontWeight:800,letterSpacing:2,opacity:.75}}>GRIN ARCADE · QUICK PLAY</div>
+        <h2 style={{margin:'8px 0 4px',fontSize:28}}>Rock, Paper, <span style={{color:'#a5b4fc'}}>Scissors</span></h2>
+        <p style={{margin:'0 0 16px',color:'#d1d5db'}}>{rpsRoomCode?'Online room · '+rpsRoomCode+' · '+(rpsRoomRole==='host'?'Host':'Challenger'):'Choose your move and take on GRIN Bot, or create a room to challenge a friend.'}</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:10}}>
+          {['rock','paper','scissors'].map((choice)=> <button key={choice} type="button" onClick={()=>playRockPaperScissors(choice)} disabled={!!rpsChoice&&(!!rpsRoomCode||rpsResult.includes('thinking'))} style={{minWidth:0,minHeight:104,borderRadius:16,border:'1px solid rgba(255,255,255,.18)',background:rpsChoice===choice?'#4f46e5':'rgba(255,255,255,.08)',color:'#fff',fontWeight:800,cursor:'pointer',display:'grid',placeItems:'center',gap:6}}>
+            <span style={{fontSize:32}}>{choice==='rock'?'✊':choice==='paper'?'✋':'✌️'}</span><span style={{textTransform:'capitalize'}}>{choice}</span>
+          </button>)}
+        </div>
+        <p role="status" aria-live="polite" style={{margin:'14px 0 0',padding:12,borderRadius:12,background:'rgba(255,255,255,.08)',color:'#f3f4f6'}}>{rpsResult}</p>
+      </section>
+      <div className="profile-card" style={{marginTop:12,padding:16,borderRadius:16}}>
+        <div style={{display:'flex',justifyContent:'space-around',gap:8,textAlign:'center',flexWrap:'wrap'}}>
+          <div><small>WINS</small><h3 style={{margin:'4px 0'}}>{rpsRoomCode?rpsRoundWins.you:rpsScore.wins}</h3></div>
+          <div><small>DRAWS</small><h3 style={{margin:'4px 0'}}>{rpsScore.draws}</h3></div>
+          <div><small>LOSSES</small><h3 style={{margin:'4px 0'}}>{rpsRoomCode?rpsRoundWins.opponent:rpsScore.losses}</h3></div>
+        </div>
+        <div className="card-actions" style={{marginTop:12}}>
+          {!rpsRoomCode ? <><button type="button" className="primary" onClick={resetRockPaperScissors}>Reset score</button><button type="button" className="secondary-btn" onClick={createRpsRoom}>Create friend room</button></> : <><button type="button" className="primary" onClick={copyRpsRoomLink}>Copy invite link</button><button type="button" className="secondary-btn" onClick={resetRpsMatch}>New match</button><button type="button" className="secondary-btn" onClick={exitRpsRoom}>Leave room</button></>}
+        </div>
+        {!rpsRoomCode&&<form className="profile-form" style={{marginTop:12}} onSubmit={e=>{e.preventDefault();joinRpsRoom();}}>
+          <label htmlFor="rps-join-code">Join a friend's room</label>
+          <div className="card-actions"><input id="rps-join-code" value={rpsJoinCode} onChange={e=>setRpsJoinCode(e.target.value.toUpperCase())} placeholder="Enter room code" maxLength={12}/><button type="submit" className="secondary-btn">Join room</button></div>
+        </form>}
+      </div>
     </> : selectedGrinGame === 'connect4' ? <>
       <section className="connect-four-hero"><div><span className="connect-four-kicker"><i/> GRIN ARCADE · STRATEGY</span><h2>Connect <em>Four</em></h2><p>Read the board. Block the threat. Line up four to win.</p></div><div className="connect-four-hero-art" aria-hidden="true"><i/><i/><i/><i/></div></section>
       <div className="connect-four-matchbar"><span><i className="disc-red"/> YOU <b>RED</b></span><span className="connect-four-vs">VS</span><span><i className="disc-yellow"/> GRIN BOT <b>GOLD</b></span></div>
