@@ -1850,7 +1850,7 @@ export default function App() {
       if(ids.length){const {data:profileRows,error:profileError}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',ids);if(profileError)console.warn('GRIN comment author profiles unavailable',profileError);profiles=profileRows||[];}
       const byId=Object.fromEntries(profiles.map(person=>[person.id,person]));
       const mapped=rows.map(row=>({...row,grin_profiles:byId[row.user_id]||null})).reverse();
-      setComments(x=>({...x,[postId]:older?[...(x[postId]||[]),...mapped]:mapped}));
+      setComments(x=>({...x,[postId]:older?[...mapped,...(x[postId]||[])]:mapped}));
       setCommentOffsets(x=>({...x,[postId]:offset+rows.length}));
       setCommentHasMore(x=>({...x,[postId]:offset+rows.length<(count??offset+rows.length+ (rows.length===30?1:0))}));
     } catch(error) {
