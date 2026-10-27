@@ -2917,6 +2917,20 @@ button:active { transform: translateY(1px); }
 }
 
 
+/* GRIN Games: distinct library and focused play screen */
+.grin-game-library .grin-games-section-heading{margin-bottom:16px}
+.grin-game-library .grin-game-categories{display:grid;gap:12px}
+.grin-game-library .grin-game-category{border-radius:16px;overflow:hidden;background:var(--card-bg,#fff)}
+.grin-game-library .grin-game-category summary{min-height:76px;padding:15px 16px}
+.grin-game-library .grin-game-picker button{cursor:pointer}
+.grin-game-detail{min-width:0;overflow:hidden}
+.grin-game-detail-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px;padding-bottom:12px;border-bottom:1px solid var(--border-color,rgba(127,127,127,.18))}
+.grin-game-detail-top>span{font-size:10px;font-weight:900;letter-spacing:1.4px;color:var(--muted,#778078)}
+.grin-game-back{min-height:38px!important;border-radius:11px!important;font-weight:800!important}
+.grin-game-detail .trivia-hero,.grin-game-detail .penalty-scoreboard,.grin-game-detail .penalty-3d-stage{max-width:100%}
+.grin-games-coming{margin-top:14px}
+@media(max-width:600px){.grin-game-detail-top{align-items:flex-start}.grin-game-detail-top>span{padding-top:12px;font-size:9px}.grin-game-library .grin-game-category summary{min-height:68px;padding:12px}}
+
 /* Social comment thread */
 .comments{margin-top:12px;padding:14px 0 2px;border-top:1px solid var(--line,#e5eee9)}
 .comments-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
