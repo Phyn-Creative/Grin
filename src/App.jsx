@@ -853,9 +853,13 @@ export default function App() {
   const [reactionMenu, setReactionMenu] = useState(null);
   const [commentCounts, setCommentCounts] = useState({});
   const [openComments, setOpenComments] = useState(null);
-  const [commentDraft, setCommentDraft] = useState('');
+  const [commentDrafts, setCommentDrafts] = useState({});
   const [commentNotice, setCommentNotice] = useState('');
   const [comments, setComments] = useState({});
+  const [commentOffsets, setCommentOffsets] = useState({});
+  const [commentLoading, setCommentLoading] = useState({});
+  const [commentHasMore, setCommentHasMore] = useState({});
+  const [commentRepliesTo, setCommentRepliesTo] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [businesses, setBusinesses] = useState([]);
   const [businessForm, setBusinessForm] = useState({name:'',handle:'',category:'Business',description:'',website:'',location:''});
@@ -1658,53 +1662,62 @@ export default function App() {
   }
 
   async function loadPosts() {
-    // These two independent reads run together to shorten the first-feed wait.
-    const [{ data: follows }, { data, error: postError }] = await Promise.all([
-      supabase.from('grin_follows').select('following_id').eq('follower_id',session.user.id),
-      supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').order('created_at',{ascending:false}).limit(50)
-    ]);
-    const nextFollowed=new Set((follows||[]).map(x=>x.following_id)); setFollowedIds(nextFollowed);
-    if(postError){ console.error('GRIN feed load failed',postError); setPosts([]); setPostNotice('Could not load the GRIN feed. Please refresh.'); return; }
-    setPosts(data || []);
-    const [{data:people},{data:creatorRows},{data:businessRows},{data:allFollows}]=await Promise.all([
-      supabase.from('grin_profiles').select('id,username,display_name,avatar_url,bio').neq('id',session.user.id).limit(30),
-      supabase.from('grin_creator_profiles').select('user_id,category,headline,bio,location').neq('user_id',session.user.id).limit(10),
-      supabase.from('grin_businesses').select('id,name,handle,category,description,logo_url,verified,owner_id').neq('owner_id',session.user.id).limit(10),
-      nextFollowed.size ? supabase.from('grin_follows').select('follower_id,following_id').in('following_id',Array.from(nextFollowed)) : Promise.resolve({data:[]})
-    ]);
-    const myFollowing=new Set(nextFollowed);
-    const mutuals={};
-    (allFollows||[]).forEach(f=>{if(myFollowing.has(f.following_id)&&f.follower_id!==session.user.id){mutuals[f.follower_id]=(mutuals[f.follower_id]||0)+1;}});
-    const ranked=(people||[]).filter(p=>!nextFollowed.has(p.id)).map(p=>({...p,mutualCount:mutuals[p.id]||0})).sort((a,b)=>(b.mutualCount-a.mutualCount)||a.display_name?.localeCompare(b.display_name||'')).slice(0,5);
-    setSuggestedPeople(ranked);
-    const creatorIds=(creatorRows||[]).map(x=>x.user_id);
-    let creatorProfiles=[]; if(creatorIds.length){const {data:p}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',creatorIds);creatorProfiles=p||[];}
-    const cp=Object.fromEntries(creatorProfiles.map(p=>[p.id,p])); setSuggestedCreators((creatorRows||[]).map(x=>({...x,grin_profiles:cp[x.user_id]})).slice(0,5));
-    setSuggestedBusinesses((businessRows||[]).slice(0,5));
-    if (data?.length) {
-      const ids=data.map(p=>p.id);
-      const [{data:rx,error:rxError},{data:mine,error:mineError},{data:cm,error:cmError},{data:pollRows,error:pollError}]=await Promise.all([
-        supabase.from('grin_post_reactions').select('post_id').in('post_id',ids),
-        supabase.from('grin_post_reactions').select('post_id,reaction').eq('user_id',session.user.id).in('post_id',ids),
-        supabase.from('grin_post_comments').select('post_id').in('post_id',ids),
-        supabase.from('grin_polls').select('id,post_id,question,expires_at,grin_poll_options(id,option_text,position)').in('post_id',ids)
+    if (!session?.user?.id) return;
+    setPostNotice('');
+    try {
+      const [{ data: follows, error: followsError }, { data, error: postError }] = await Promise.all([
+        supabase.from('grin_follows').select('following_id').eq('follower_id', session.user.id),
+        supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').order('created_at',{ascending:false}).limit(50)
       ]);
-      if(rxError||mineError||cmError||pollError) console.error('GRIN feed extras failed',{rxError,mineError,cmError,pollError});
-      const rc={},rm={},cc={},pm={};
-      (rx||[]).forEach(x=>rc[x.post_id]=(rc[x.post_id]||0)+1);
-      (mine||[]).forEach(x=>rm[x.post_id]=x.reaction);
-      (cm||[]).forEach(x=>cc[x.post_id]=(cc[x.post_id]||0)+1);
-      (pollRows||[]).forEach(x=>pm[x.post_id]=x);
-      setReactionCounts(rc); setReactionMine(rm); setCommentCounts(cc); setPolls(pm);
-      const pollIds=(pollRows||[]).map(x=>x.id);
-      if(pollIds.length){
-        const [{data:votes},{data:allVotes}]=await Promise.all([
-          supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds),
-          supabase.from('grin_poll_votes').select('poll_id,option_id').in('poll_id',pollIds)
+      if (postError) throw postError;
+      if (followsError) console.warn('GRIN follow list could not load', followsError);
+      const nextFollowed = new Set((follows || []).map(x => x.following_id));
+      setFollowedIds(nextFollowed);
+      setPosts(data || []);
+      const [{data:people},{data:creatorRows},{data:businessRows},{data:allFollows}] = await Promise.all([
+        supabase.from('grin_profiles').select('id,username,display_name,avatar_url,bio').neq('id',session.user.id).limit(30),
+        supabase.from('grin_creator_profiles').select('user_id,category,headline,bio,location').neq('user_id',session.user.id).limit(10),
+        supabase.from('grin_businesses').select('id,name,handle,category,description,logo_url,verified,owner_id').neq('owner_id',session.user.id).limit(10),
+        nextFollowed.size ? supabase.from('grin_follows').select('follower_id,following_id').in('following_id',Array.from(nextFollowed)) : Promise.resolve({data:[]})
+      ]);
+      const myFollowing = new Set(nextFollowed), mutuals = {};
+      (allFollows || []).forEach(f => { if(myFollowing.has(f.following_id) && f.follower_id !== session.user.id) mutuals[f.follower_id]=(mutuals[f.follower_id]||0)+1; });
+      const ranked = (people||[]).filter(p=>!nextFollowed.has(p.id)).map(p=>({...p,mutualCount:mutuals[p.id]||0})).sort((a,b)=>(b.mutualCount-a.mutualCount)||(a.display_name||'').localeCompare(b.display_name||'')).slice(0,5);
+      setSuggestedPeople(ranked);
+      const creatorIds=(creatorRows||[]).map(x=>x.user_id);
+      let creatorProfiles=[];
+      if(creatorIds.length){const {data:p}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',creatorIds);creatorProfiles=p||[];}
+      const cp=Object.fromEntries(creatorProfiles.map(p=>[p.id,p]));
+      setSuggestedCreators((creatorRows||[]).map(x=>({...x,grin_profiles:cp[x.user_id]})).slice(0,5));
+      setSuggestedBusinesses((businessRows||[]).slice(0,5));
+      if(data?.length){
+        const ids=data.map(p=>p.id);
+        const [{data:rx,error:rxError},{data:mine,error:mineError},{data:cm,error:cmError},{data:pollRows,error:pollError}]=await Promise.all([
+          supabase.from('grin_post_reactions').select('post_id').in('post_id',ids),
+          supabase.from('grin_post_reactions').select('post_id,reaction').eq('user_id',session.user.id).in('post_id',ids),
+          supabase.from('grin_post_comments').select('post_id').in('post_id',ids),
+          supabase.from('grin_polls').select('id,post_id,question,expires_at,grin_poll_options(id,option_text,position)').in('post_id',ids)
         ]);
-        const vm={},counts={}; (votes||[]).forEach(v=>vm[v.poll_id]=v.option_id); (allVotes||[]).forEach(v=>{if(!counts[v.poll_id])counts[v.poll_id]={};counts[v.poll_id][v.option_id]=(counts[v.poll_id][v.option_id]||0)+1;}); setPollVotes(vm); setPollVoteCounts(counts);
-      } else { setPollVotes({}); setPollVoteCounts({}); }
-    } else { setReactionCounts({}); setReactionMine({}); setCommentCounts({}); setPolls({}); setPollVotes({}); setPollVoteCounts({}); }
+        if(rxError||mineError||cmError||pollError) console.warn('GRIN feed extras partially failed',{rxError,mineError,cmError,pollError});
+        const rc={},rm={},cc={},pm={};
+        (rx||[]).forEach(x=>rc[x.post_id]=(rc[x.post_id]||0)+1);
+        (mine||[]).forEach(x=>rm[x.post_id]=x.reaction);
+        (cm||[]).forEach(x=>cc[x.post_id]=(cc[x.post_id]||0)+1);
+        (pollRows||[]).forEach(x=>pm[x.post_id]=x);
+        setReactionCounts(rc);setReactionMine(rm);setCommentCounts(cc);setPolls(pm);
+        const pollIds=(pollRows||[]).map(x=>x.id);
+        if(pollIds.length){
+          const [{data:votes},{data:allVotes}]=await Promise.all([
+            supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds),
+            supabase.from('grin_poll_votes').select('poll_id,option_id').in('poll_id',pollIds)
+          ]);
+          const vm={},counts={};(votes||[]).forEach(v=>vm[v.poll_id]=v.option_id);(allVotes||[]).forEach(v=>{if(!counts[v.poll_id])counts[v.poll_id]={};counts[v.poll_id][v.option_id]=(counts[v.poll_id][v.option_id]||0)+1;});setPollVotes(vm);setPollVoteCounts(counts);
+        }else{setPollVotes({});setPollVoteCounts({});}
+      }else{setReactionCounts({});setReactionMine({});setCommentCounts({});setPolls({});setPollVotes({});setPollVoteCounts({});}
+    } catch(error) {
+      console.error('GRIN feed request failed', error);
+      setPostNotice(/fetch|network|failed to fetch/i.test(error?.message||'') ? 'Connection problem while loading posts. Check your connection and retry.' : 'Could not load posts: '+(error?.message||'Please try again.'));
+    }
   }
   useEffect(() => {
     if (!session) return;
@@ -1740,40 +1753,50 @@ export default function App() {
   async function createPost(e) {
     e?.preventDefault();
     const body=postBody.trim();
-    if ((!body && !postFile) || postLoading) return;
-    setPostLoading(true); setPostNotice('');
-    let mediaUrl=null, mediaType=null;
-    if (postFile) {
-      if (postFile.size > 50 * 1024 * 1024) { setPostNotice('Media must be 50MB or smaller.'); setPostLoading(false); return; }
-      mediaType=postFile.type.startsWith('video/')?'video':'image';
-      const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-      const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
-      const { error:uploadError }=await supabase.storage.from('grin-media').upload(path,postFile,{contentType:postFile.type,cacheControl:'3600'});
-      if(uploadError){setPostNotice(uploadError.message);setPostLoading(false);return;}
-      const { data:pub }=supabase.storage.from('grin-media').getPublicUrl(path);
-      mediaUrl=pub.publicUrl;
-    }
-    const { data, error } = await supabase.rpc('grin_create_post_with_media',{p_body:body,p_media_url:mediaUrl,p_media_type:mediaType});
-    if (error) setPostNotice(error.message);
-    else {
-      const {data:full}=await supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,created_at,grin_profiles(username,display_name,avatar_url)').eq('id',data.id).single();
-      if(full) setPosts(current=>current.some(p=>p.id===full.id)?current:[full,...current]);
+    if((!body&&!postFile)||postLoading)return;
+    if(!session?.user?.id){setPostNotice('Please sign in again before posting.');return;}
+    if(body.length>10000){setPostNotice('Your post is too long. Keep it under 10,000 characters.');return;}
+    setPostLoading(true);setPostNotice('');
+    let mediaUrl=null,mediaType=null;
+    try{
+      if(postFile){
+        if(postFile.size>50*1024*1024)throw new Error('Media must be 50 MB or smaller.');
+        if(!postFile.type.startsWith('image/')&&!postFile.type.startsWith('video/'))throw new Error('Choose an image or video file.');
+        mediaType=postFile.type.startsWith('video/')?'video':'image';
+        const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
+        const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,postFile,{contentType:postFile.type,cacheControl:'3600',upsert:false});
+        if(uploadError)throw new Error('Media upload failed: '+uploadError.message);
+        mediaUrl=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
+      }
+      const {data,error}=await supabase.rpc('grin_create_post_with_media',{p_body:body,p_media_url:mediaUrl,p_media_type:mediaType});
+      if(error)throw error;
+      if(!data?.id)throw new Error('The server did not confirm the post was created. Refresh the feed before retrying to avoid duplicates.');
+      const {data:full,error:fetchError}=await supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').eq('id',data.id).maybeSingle();
+      if(fetchError)console.warn('Post saved, but full post details could not be fetched',fetchError);
+      const optimistic=full||{id:data.id,author_id:session.user.id,body,media_url:mediaUrl,media_type:mediaType,created_at:new Date().toISOString(),grin_profiles:profile};
+      setPosts(current=>current.some(p=>p.id===optimistic.id)?current:[optimistic,...current]);
       if(showPollComposer){
-        const q=pollQuestion.trim(), opts=pollOptions.map(x=>x.trim()).filter(Boolean);
-        if(!q||opts.length<2){setPostNotice('Post created, but add a poll question and at least two options.');}
+        const q=pollQuestion.trim(),opts=pollOptions.map(x=>x.trim()).filter(Boolean);
+        if(!q||opts.length<2){setPostNotice('Your post is live, but the poll was not added. Add a question and at least two options.');}
         else{
           const {data:poll,error:pollError}=await supabase.from('grin_polls').insert({post_id:data.id,question:q,expires_at:new Date(Date.now()+7*24*60*60*1000).toISOString()}).select().single();
-          if(!pollError){
+          if(pollError)setPostNotice('Post published, but the poll could not be created: '+pollError.message);
+          else{
             const {data:createdOptions,error:optError}=await supabase.from('grin_poll_options').insert(opts.map((option_text,i)=>({poll_id:poll.id,option_text,position:i}))).select();
-            if(optError) setPostNotice(optError.message);
-            else {setPolls(x=>({...x,[data.id]:{...poll,grin_poll_options:createdOptions||[]}}));setPollQuestion('');setPollOptions(['','']);}
-          } else setPostNotice(pollError.message);
+            if(optError)setPostNotice('Post published, but poll options could not be saved: '+optError.message);
+            else{setPolls(x=>({...x,[data.id]:{...poll,grin_poll_options:createdOptions||[]}}));setPollQuestion('');setPollOptions(['','']);}
+          }
         }
       }
-      setPostBody(''); setPostFile(null); setShowPollComposer(false);
-      const input=document.getElementById('grin-media-input'); if(input) input.value='';
-    }
-    setPostLoading(false);
+      setPostBody('');setPostFile(null);setShowPollComposer(false);
+      const input=document.getElementById('grin-media-input');if(input)input.value='';
+      if(!postNotice)setPostNotice('Posted successfully.');
+    }catch(error){
+      console.error('GRIN post creation failed',error);
+      const message=error?.message||'Unknown error';
+      setPostNotice(/fetch|network|failed to fetch/i.test(message)?'Connection interrupted. We could not confirm the post. Refresh the feed before trying again to avoid duplicate posts.':message);
+    }finally{setPostLoading(false);}
   }
 
   async function votePoll(poll,optionId){
@@ -1811,29 +1834,53 @@ export default function App() {
 
   async function repostPost(p){const {error}=await supabase.from('grin_posts').insert({author_id:session.user.id,body:'Reposted: '+(p.body||'GRIN post'),repost_of_id:p.id});if(!error){setPostNotice('Reposted to your GRIN profile.');loadPosts();}}
 
-  async function loadComments(postId) {
+  async function loadComments(postId, older = false) {
+    if (commentLoading[postId]) return;
     setCommentNotice('');
-    const {data,error}=await supabase.from('grin_post_comments').select('id,post_id,user_id,body,created_at').eq('post_id',postId).order('created_at');
-    if(error){console.error('GRIN comments could not load',error);setCommentNotice('Comments could not load: '+error.message);return;}
-    const ids=[...new Set((data||[]).map(row=>row.user_id).filter(Boolean))];
-    let profiles=[];
-    if(ids.length){const {data:profileRows,error:profileError}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',ids);if(profileError)console.error('GRIN comment authors could not load',profileError);profiles=profileRows||[];}
-    const byId=Object.fromEntries(profiles.map(person=>[person.id,person]));
-    setComments(x=>({...x,[postId]:(data||[]).map(row=>({...row,grin_profiles:byId[row.user_id]||null}))}));
+    setCommentLoading(x=>({...x,[postId]:true}));
+    try {
+      const offset = older ? (commentOffsets[postId] || 0) : 0;
+      const {data,error,count}=await supabase.from('grin_post_comments')
+        .select('id,post_id,user_id,body,created_at,parent_comment_id',{count:'exact'})
+        .eq('post_id',postId).order('created_at',{ascending:false}).range(offset,offset+29);
+      if(error) throw error;
+      const rows=data||[];
+      const ids=[...new Set(rows.map(row=>row.user_id).filter(Boolean))];
+      let profiles=[];
+      if(ids.length){const {data:profileRows,error:profileError}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').in('id',ids);if(profileError)console.warn('GRIN comment author profiles unavailable',profileError);profiles=profileRows||[];}
+      const byId=Object.fromEntries(profiles.map(person=>[person.id,person]));
+      const mapped=rows.map(row=>({...row,grin_profiles:byId[row.user_id]||null})).reverse();
+      setComments(x=>({...x,[postId]:older?[...(x[postId]||[]),...mapped]:mapped}));
+      setCommentOffsets(x=>({...x,[postId]:offset+rows.length}));
+      setCommentHasMore(x=>({...x,[postId]:offset+rows.length<(count??offset+rows.length+ (rows.length===30?1:0))}));
+    } catch(error) {
+      console.error('GRIN comments could not load',error);
+      setCommentNotice(/fetch|network|failed to fetch/i.test(error?.message||'')?'Connection problem while loading comments. Please retry.':'Comments could not load: '+(error?.message||'Please try again.'));
+    } finally {
+      setCommentLoading(x=>({...x,[postId]:false}));
+    }
   }
 
   async function addComment(postId) {
-    const body=commentDraft.trim();
+    const body=(commentDrafts[postId]||'').trim();
     if(!body) return;
+    if(body.length>2000){setCommentNotice('Comments must be 2,000 characters or fewer.');return;}
     if(!session?.user?.id){setCommentNotice('Please sign in to comment.');return;}
     setCommentNotice('');
-    const {data,error}=await supabase.from('grin_post_comments').insert({post_id:postId,user_id:session.user.id,body}).select('id,post_id,user_id,body,created_at').single();
-    if(error){console.error('GRIN comment insert failed',error);setCommentNotice('Comment could not be sent: '+error.message);return;}
-    const {data:author}=await supabase.from('grin_profiles').select('id,username,display_name,avatar_url').eq('id',session.user.id).maybeSingle();
-    const comment={...data,grin_profiles:author||profile||null};
-    setComments(x=>({...x,[postId]:[...(x[postId]||[]),comment]}));
-    setCommentCounts(x=>({...x,[postId]:(x[postId]||0)+1}));
-    setCommentDraft('');setCommentNotice('');
+    try{
+      const parent_comment_id=commentRepliesTo[postId]||null;
+      const {data,error}=await supabase.from('grin_post_comments').insert({post_id:postId,user_id:session.user.id,body,parent_comment_id}).select('id,post_id,user_id,body,created_at,parent_comment_id').single();
+      if(error)throw error;
+      const author=profile||{id:session.user.id,display_name:'You'};
+      const comment={...data,grin_profiles:author};
+      setComments(x=>({...x,[postId]:[...(x[postId]||[]),comment]}));
+      setCommentCounts(x=>({...x,[postId]:(x[postId]||0)+1}));
+      setCommentDrafts(x=>({...x,[postId]:''}));
+      setCommentRepliesTo(x=>({...x,[postId]:null}));
+    }catch(error){
+      console.error('GRIN comment insert failed',error);
+      setCommentNotice(/fetch|network|failed to fetch/i.test(error?.message||'')?'Connection problem. Your comment was not confirmed—please retry.':'Comment could not be sent: '+(error?.message||'Please try again.'));
+    }
   }
 
   async function toggleComments(postId) {
@@ -2531,7 +2578,19 @@ export default function App() {
   {p.media_url&&p.media_type==='image'&&<img className="post-media" src={p.media_url} alt=""/>}{p.media_url&&p.media_type==='video'&&<video className="post-media" src={p.media_url} controls/>}
   {polls[p.id]&&<div className="poll-card"><strong>{polls[p.id].question}</strong>{polls[p.id].grin_poll_options?.map(o=>{const count=pollVoteCounts[polls[p.id].id]?.[o.id]||0;const total=Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0);const pct=total?Math.round(count*100/total):0;return <button type="button" className={pollVotes[polls[p.id].id]===o.id?'poll-choice selected':'poll-choice'} key={o.id} onClick={()=>votePoll(polls[p.id],o.id)}><span>{o.option_text}</span><b>{pct}%</b></button>})}<small>{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)} vote{Object.values(pollVoteCounts[polls[p.id].id]||{}).reduce((a,b)=>a+b,0)===1?'':'s'} · {pollVotes[polls[p.id].id]?'Your vote is recorded':'Choose an option'} · {polls[p.id].expires_at&&new Date(polls[p.id].expires_at)>new Date()?'Open':'Closed'}</small></div>}
   <div className="post-footer"><div className="reaction-wrap"><button type="button" aria-expanded={reactionMenu===p.id} aria-label="Choose a reaction" onClick={()=>setReactionMenu(reactionMenu===p.id?null:p.id)}>{({like:'👍',love:'❤️',laugh:'😂',wow:'😮',sad:'😢',angry:'😡'})[reactionMine[p.id]]||'👍'} React <span>{reactionCounts[p.id]||0}</span></button>{reactionMenu===p.id&&<div className="reaction-menu" role="group" aria-label="Post reactions">{[{value:'like',emoji:'👍',label:'Like'},{value:'love',emoji:'❤️',label:'Love'},{value:'laugh',emoji:'😂',label:'Laugh'},{value:'wow',emoji:'😮',label:'Wow'},{value:'sad',emoji:'😢',label:'Sad'},{value:'angry',emoji:'😡',label:'Angry'}].map(r=><button key={r.value} type="button" aria-label={r.label} title={r.label} onClick={()=>reactToPost(p.id,r.value)}>{r.emoji}</button>)}</div>}</div><button type="button" onClick={()=>toggleComments(p.id)}>💬 Comment <span>{commentCounts[p.id]||0}</span></button><button onClick={()=>repostPost(p)}>🔁 Repost</button><button onClick={()=>toggleBookmark(p.id)}>🔖 {bookmarks.has(p.id)?'Saved':'Save'}</button><button onClick={()=>{setExternalShareNotice('');sharePostExternally(p);}}>↗ Share link</button><button onClick={()=>setSharePostTarget(p)}>✉ Send in GRIN</button></div>
-  {openComments===p.id&&<div className="comments">{commentNotice&&<p className="profile-notice" role="alert">{commentNotice}</p>}<div className="comment-list">{(comments[p.id]||[]).map(c=><div className="comment" key={c.id}><button type="button" className="chat-avatar" aria-label={"Open "+(c.grin_profiles?.display_name||'GRIN User')+"'s profile"} onClick={()=>openPersonProfile({id:c.author_id,...c.grin_profiles})} style={{border:0,cursor:'pointer'}}>{c.grin_profiles?.avatar_url?<img src={c.grin_profiles.avatar_url} alt=""/>:(c.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</button><div><button type="button" onClick={()=>openPersonProfile({id:c.author_id,...c.grin_profiles})} style={{border:0,padding:0,background:'transparent',color:'inherit',font:'inherit',fontWeight:650,cursor:'pointer',textAlign:'left'}}>{c.grin_profiles?.display_name||'GRIN User'}</button><p>{c.body}</p></div></div>)}</div><div className="comment-compose"><input value={commentDraft} onChange={e=>setCommentDraft(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addComment(p.id)} placeholder="Write a comment..."/><button className="send" onClick={()=>addComment(p.id)}><Send size={16}/></button></div></div>}
+  {openComments===p.id&&<div className="comments">
+    <div className="comments-heading"><div><strong>Conversation</strong><span>{commentCounts[p.id]||0} {(commentCounts[p.id]||0)===1?'comment':'comments'}</span></div><button type="button" onClick={()=>loadComments(p.id,false)} disabled={commentLoading[p.id]}>{commentLoading[p.id]?'Refreshing…':'Refresh'}</button></div>
+    {commentNotice&&<p className="comment-notice" role="alert">{commentNotice}</p>}
+    {commentHasMore[p.id]&&<button type="button" className="load-older-comments" disabled={commentLoading[p.id]} onClick={()=>loadComments(p.id,true)}>{commentLoading[p.id]?'Loading…':'Load older comments'}</button>}
+    <div className="comment-list">{(comments[p.id]||[]).map(c=><div className={'comment'+(c.parent_comment_id?' comment-reply':'')} key={c.id}>
+      <button type="button" className="chat-avatar comment-avatar" aria-label={"Open "+(c.grin_profiles?.display_name||'GRIN User')+"'s profile"} onClick={()=>openPersonProfile({id:c.user_id,...c.grin_profiles})} style={{border:0,cursor:'pointer'}}>{c.grin_profiles?.avatar_url?<img src={c.grin_profiles.avatar_url} alt=""/>:(c.grin_profiles?.display_name||'G').slice(0,2).toUpperCase()}</button>
+      <div className="comment-content"><div className="comment-bubble"><button type="button" className="comment-author" onClick={()=>openPersonProfile({id:c.user_id,...c.grin_profiles})}>{c.grin_profiles?.display_name||'GRIN User'}</button><time dateTime={c.created_at}>{new Date(c.created_at).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</time><p>{c.body}</p></div><div className="comment-actions"><button type="button" onClick={()=>setCommentRepliesTo(x=>({...x,[p.id]:c.id}))}>Reply</button></div></div>
+    </div>)}
+    {!comments[p.id]?.length&&!commentLoading[p.id]&&<div className="comments-empty"><MessageCircle size={20}/><span>No comments yet. Start the conversation.</span></div>}
+    </div>
+    {commentRepliesTo[p.id]&&<div className="replying-to">Replying to a comment <button type="button" onClick={()=>setCommentRepliesTo(x=>({...x,[p.id]:null}))}>Cancel</button></div>}
+    <div className="comment-compose"><div className="comment-compose-avatar">{profile?.avatar_url?<img src={profile.avatar_url} alt=""/>:(profile?.display_name||'You').slice(0,1).toUpperCase()}</div><input aria-label="Write a comment" maxLength={2000} value={commentDrafts[p.id]||''} onChange={e=>setCommentDrafts(x=>({...x,[p.id]:e.target.value}))} onKeyDown={e=>e.key==='Enter'&&!e.shiftKey&&(e.preventDefault(),addComment(p.id))} placeholder={commentRepliesTo[p.id]?'Write a reply…':'Add to the conversation…'}/><button type="button" className="send" aria-label="Send comment" disabled={!(commentDrafts[p.id]||'').trim()} onClick={()=>addComment(p.id)}><Send size={16}/></button></div>
+  </div>}
 </article>)}
 </div> : active === 'profile' ? <div className="profile-page"><div className="profile-cover"><div className="profile-avatar-large">{profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : (profile?.display_name || 'G').slice(0,2).toUpperCase()}</div><div><h1>{profile?.display_name || 'GRIN User'}</h1><p>@{profile?.username || 'user'}</p><p className="profile-bio">{profile?.bio || 'Add a little about yourself so people know you.'}</p><div className="profile-cover-actions"><span className="profile-post-count">{posts.filter(p=>p.author_id===session.user.id).length} posts</span><button type="button" className="secondary-btn" onClick={()=>shareProfileExternally(profile)}>↗ Share profile link</button>{externalProfileShareNotice&&<small className="profile-notice">{externalProfileShareNotice}</small>}</div></div></div><form className="profile-card" onSubmit={saveProfile}><h2>Edit profile</h2><label>Username<input value={profileForm.username} onChange={e=>setProfileForm({...profileForm,username:e.target.value})} minLength={3} maxLength={30} pattern="[a-zA-Z0-9_]+" required /></label><label>Display name<input value={profileForm.display_name} onChange={e=>setProfileForm({...profileForm,display_name:e.target.value})} maxLength={60} required /></label><label>Bio<textarea value={profileForm.bio} onChange={e=>setProfileForm({...profileForm,bio:e.target.value})} maxLength={160} placeholder="Tell people a little about you..." /></label><label>Phone number (optional)<input type="tel" inputMode="tel" autoComplete="tel" value={profileForm.phone_e164} onChange={e=>setProfileForm({...profileForm,phone_e164:e.target.value})} placeholder="+2348012345678" /></label><small className="profile-private-note">Private — saved separately from your public profile and visible only to you. Contact matching will remain off until phone verification is safely implemented.</small><label>Profile photo<div className="avatar-upload-row">{(avatarPreview || profile?.avatar_url) && <img className="avatar-upload-preview" src={avatarPreview || profile.avatar_url} alt="Profile photo preview" />}<input id="grin-avatar-input" type="file" accept="image/*" onChange={e=>{const file=e.target.files?.[0]||null;setAvatarFile(file);setAvatarPreview(file?URL.createObjectURL(file):'');}} /></div><small>Choose a photo from your device. JPG, PNG or another image format, up to 5 MB.</small></label>{profileNotice && <div className="profile-notice">{profileNotice}</div>}<button className="primary" type="submit" disabled={profileSaving}>{profileSaving ? 'Saving...' : 'Save profile'}</button></form></div> : <><div className="chat-list"><div className="section-head"><div><h1>Messages {Object.values(unreadCounts).reduce((a,b)=>a+b,0)>0&&<span className="nav-badge">{Object.values(unreadCounts).reduce((a,b)=>a+b,0)}</span>}</h1><p>Your conversations, all in one place.</p></div><button className="icon-btn" onClick={()=>{setGroupMode(x=>!x);setGroupSelected([]);setGroupName('');setAuthError('');}} title="Create a group conversation" aria-label="Create a group conversation"><Plus size={20}/></button></div><input className="chat-search" value={chatSearch} onChange={e=>setChatSearch(e.target.value)} placeholder="Search messages or people..." aria-label="Search your conversations"/>{groupMode&&<div className="group-builder"><input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Group name" maxLength={80}/><p>{groupSelected.length} member{groupSelected.length===1?'':'s'} selected</p><div className="group-chips">{groupSelected.map(p=><button type="button" key={p.id} onClick={()=>setGroupSelected(x=>x.filter(v=>v.id!==p.id))}>{p.display_name||p.username} ×</button>)}</div><button className="primary" onClick={createGroup}>Create group</button></div>}<div className="chat-folder-toggle"><button type="button" className={!showArchivedChats?'active':''} onClick={()=>setShowArchivedChats(false)}>All chats</button><button type="button" className={showArchivedChats?'active':''} onClick={()=>setShowArchivedChats(true)}>Archived {archivedChatIds.length>0&&<span>{archivedChatIds.length}</span>}</button></div>{chats.filter(c=>(showArchivedChats?archivedChatIds.includes(c.id):!archivedChatIds.includes(c.id))&&(c.name+' '+c.preview).toLowerCase().includes(chatSearch.toLowerCase())).sort((a,b)=>Number(pinnedChatIds.includes(b.id))-Number(pinnedChatIds.includes(a.id))).map(c=><div className="chat-row-wrap" key={c.id}><button onClick={()=>{setSelected(c);setChatOpen(true);setAuthError('');}} className={selected.id===c.id?'chat-row selected':'chat-row'}><div className="chat-avatar">{c.avatar_url?<img src={c.avatar_url} alt=""/>:c.initials}</div><div className="chat-meta"><strong>{pinnedChatIds.includes(c.id)&&<Pin size={12} className="chat-pinned-indicator"/>}{c.name}{mutedChatIds.includes(c.id)&&<BellOff size={12} className="chat-muted-indicator"/>}</strong><span>{c.preview}</span>{unreadCounts[c.id]>0&&<b className="unread-badge">{unreadCounts[c.id]}</b>}</div></button><button type="button" className={pinnedChatIds.includes(c.id)?'chat-pin-btn is-pinned':'chat-pin-btn'} onClick={event=>{event.stopPropagation();togglePinnedChat(c.id);}} aria-label={pinnedChatIds.includes(c.id)?'Unpin '+c.name:'Pin '+c.name} title={pinnedChatIds.includes(c.id)?'Unpin conversation':'Pin conversation'}><Pin size={15}/></button><button type="button" className={mutedChatIds.includes(c.id)?'chat-action-btn is-muted':'chat-action-btn'} onClick={event=>{event.stopPropagation();toggleChatPreference(c.id,'mute');}} aria-label={mutedChatIds.includes(c.id)?'Unmute '+c.name:'Mute '+c.name} title={mutedChatIds.includes(c.id)?'Unmute conversation':'Mute notifications'}>{mutedChatIds.includes(c.id)?<Volume2 size={15}/>:<BellOff size={15}/>}</button><button type="button" className={archivedChatIds.includes(c.id)?'chat-action-btn is-archived':'chat-action-btn'} onClick={event=>{event.stopPropagation();toggleChatPreference(c.id,'archive');}} aria-label={archivedChatIds.includes(c.id)?'Unarchive '+c.name:'Archive '+c.name} title={archivedChatIds.includes(c.id)?'Unarchive conversation':'Archive conversation'}>{archivedChatIds.includes(c.id)?<MessageCircle size={15}/>:<Archive size={15}/>}</button></div>)}{chats.filter(c=>(showArchivedChats?archivedChatIds.includes(c.id):!archivedChatIds.includes(c.id))&&(c.name+' '+c.preview).toLowerCase().includes(chatSearch.toLowerCase())).length===0&&<div className="chat-empty-state"><MessageCircle size={24}/><strong>{showArchivedChats?'No archived conversations':chatSearch?'No chats match that search':'Your conversations start here'}</strong><span>{showArchivedChats?'Conversations you archive will appear here.':chatSearch?'Try another name or clear the search.':'Search for someone above to say hello.'}</span></div>}</div><div className={chatOpen?'conversation chat-open':'conversation'}><div className="conversation-head"><button type="button" className="chat-back-button" onClick={()=>setChatOpen(false)} aria-label="Back to chat list"><ChevronLeft size={20}/></button><button type="button" className="chat-avatar" aria-label={"Open "+selected.name+"'s profile"} onClick={()=>selected.peer_id&&openPersonProfile({id:selected.peer_id,username:selected.peer_username,display_name:selected.name,avatar_url:selected.avatar_url})} style={{border:0,cursor:selected.peer_id?'pointer':'default'}}>{selected.avatar_url?<img src={selected.avatar_url} alt=""/>:selected.initials}</button><div><strong>{selected.peer_id?<button type="button" className="chat-profile-link" onClick={()=>openPersonProfile({id:selected.peer_id,username:selected.peer_username,display_name:selected.name,avatar_url:selected.avatar_url})}>{selected.name}</button>:selected.name}</strong><span>{selected.id === 'welcome' ? 'GRIN' : (selected.peer_id&&onlineUsers[selected.peer_id] ? 'online' : 'offline')}{Object.values(typingUsers).some(Boolean) ? ' · typing…' : ''}</span></div></div><div className="messages">{selected.id !== "welcome" && <div className="message-search-wrap"><Search size={16}/><input className="message-search" value={messageSearch} onChange={e=>setMessageSearch(e.target.value)} placeholder="Search messages in this chat…" aria-label="Search messages in this conversation"/>{messageSearch&&<button type="button" onClick={()=>setMessageSearch('')} aria-label="Clear message search"><X size={15}/></button>}</div>}{messageSearch.trim()&&<div className="message-search-count" role="status">{messages.filter(m=>String(m.body||'').toLowerCase().includes(messageSearch.trim().toLowerCase())).length} matching message(s) in loaded history</div>}{selected.id !== "welcome" && hasMoreMessages && <button type="button" className="secondary-btn" onClick={loadOlderMessages} disabled={loadingOlderMessages}>{loadingOlderMessages ? "Loading older messages…" : "Load older messages"}</button>}{selected.id === 'welcome' && <div className="welcome"><div className="welcome-icon">☺</div><h2>Welcome to GRIN</h2><p>Your real account is connected. The next layer is finding people and starting conversations.</p></div>}{messages.filter(m=>!messageSearch.trim()||String(m.body||'').toLowerCase().includes(messageSearch.trim().toLowerCase())).map(m=><div className={m.sender_id===session.user.id?'bubble mine':'bubble'} key={m.id}>{m.deleted_at?<em>This message was deleted.</em>:<>{m.sender_id!==session.user.id&&<small className="message-sender-name">{m.sender_profile?.display_name||m.sender_profile?.username||'GRIN user'}</small>}<div>{m.reply_to_id&&<div className="reply-preview">Replying to a message</div>}{m.media_url&&(m.media_type==='audio'?<audio src={m.media_url} controls preload="metadata" className="message-audio" aria-label="Voice note"/>:(m.media_type==='video'?<video src={m.media_url} controls className="message-media"/>:<img src={m.media_url} className="message-media" alt=""/>))}{m.shared_post_id&&<div className="shared-post-card"><strong>Shared GRIN post</strong><span>{m.body}</span></div>}{m.shared_community_post_id&&<div className="shared-post-card"><strong>Shared community post</strong><span>{m.body}</span></div>}{m.shared_creator_id&&<div className="shared-post-card"><strong>🎨 {m.shared_creator?.grin_profiles?.display_name||'GRIN Creator'}</strong><span>{m.shared_creator?.headline||m.shared_creator?.category||'Creator profile'}</span><small>@{m.shared_creator?.grin_profiles?.username||'creator'} · {m.shared_creator?.location||'GRIN'}</small></div>}{m.shared_business_id&&<div className="shared-post-card"><strong>💼 {m.shared_business?.name||'GRIN Business'}</strong><span>{m.shared_business?.category||'Business profile'}</span><small>@{m.shared_business?.handle||'business'} · {m.shared_business?.location||'GRIN'}</small></div>}{m.shared_listing_id&&<div className="shared-post-card"><strong>🛍️ {m.shared_listing?.title||'GRIN Marketplace listing'}</strong><span>{m.shared_listing?.category||'Marketplace'}</span><small>{m.shared_listing?.price!=null?(m.shared_listing?.currency||'NGN')+' '+Number(m.shared_listing.price).toLocaleString():'Contact seller'}</small></div>}{m.body?.split(' ').map((part,index)=>part.startsWith('https://')||part.startsWith('http://')?<a key={index} href={part} target="_blank" rel="noreferrer">{part}</a>:part+' ')}</div>{m.edited_at&&<small>edited</small>}<div className="message-actions"><button onClick={()=>setReplyingTo(m)}>Reply</button><button onClick={()=>toggleMessageReaction(m,'❤️')}>❤️ {(messageReactions[m.id]||[]).filter(x=>x.reaction==='❤️').length||''}</button>{m.sender_id===session.user.id&&<><button onClick={()=>editMessage(m)}>Edit</button><button onClick={()=>deleteMessage(m)}>Delete</button></>}</div>{m.sender_id===session.user.id&&selected.kind==='direct'&&peerReadAt&&new Date(peerReadAt)>=new Date(m.created_at)&&<small className="message-read-receipt" title="The other person has opened this conversation">✓✓ Seen</small>}</>}</div>)}<div ref={messagesEndRef} aria-hidden="true" /></div>{sharePostTarget&&<div className="profile-modal"><div className="profile-card share-card"><button type="button" className="secondary-btn" disabled={sharePostSending} onClick={()=>setSharePostTarget(null)}>Close</button><h2>Send post to…</h2><p>Choose a GRIN chat.</p>{sharePostNotice&&<p className="profile-notice" role="alert">{sharePostNotice}</p>}<div className="share-chat-list">{chats.filter(x=>x.id!=='welcome').length?chats.filter(x=>x.id!=='welcome').map(chat=><button type="button" className="secondary-btn share-chat-item" key={chat.id} disabled={sharePostSending} onClick={()=>sharePostToChat(chat)}><span className="chat-avatar">{chat.initials||chat.name?.slice(0,2)||'G'}</span><span><strong>{sharePostSending?'Sending…':chat.name||'GRIN chat'}</strong><small>{chat.preview||'Conversation'}</small></span></button>):<div className="empty-state"><p>You don’t have a conversation to send this to yet.</p><button type="button" className="primary" onClick={()=>{setSharePostTarget(null);setActive('explore');}}>Find people to message</button></div>}</div></div></div>}<div className="composer">{replyingTo&&<div className="replying">Replying to: {replyingTo.body.slice(0,60)} <button onClick={()=>setReplyingTo(null)}>×</button></div>}<label className="icon-btn file-btn" title="Attach photo or video" aria-label="Attach photo or video">＋<input type="file" accept="image/*,video/*" hidden onChange={e=>setMessageFile(e.target.files?.[0]||null)}/></label><label className="icon-btn file-btn" title="Take a photo" aria-label="Take a photo"><Camera size={19}/><input type="file" accept="image/*" capture="environment" hidden onChange={e=>setMessageFile(e.target.files?.[0]||null)}/></label><button type="button" className="icon-btn" title={isRecordingVoice?'Stop voice note':'Record voice note'} aria-label={isRecordingVoice?'Stop voice note':'Record voice note'} onClick={toggleVoiceRecording} disabled={selected.id==='welcome'}>{isRecordingVoice?<Square size={18}/>:<Mic size={19}/>}</button><div className="chat-emoji-wrap" style={{position:'relative',display:'inline-flex',alignItems:'center'}}><button type="button" className="icon-btn" title="Choose an emoji" aria-label="Choose an emoji" aria-expanded={emojiPickerOpen} onClick={()=>setEmojiPickerOpen(open=>!open)}><Smile size={20}/></button>{emojiPickerOpen&&<div className="chat-emoji-picker" role="group" aria-label="Choose an emoji" style={{position:'absolute',bottom:'calc(100% + 10px)',left:0,zIndex:30,display:'grid',gridTemplateColumns:'repeat(6,minmax(32px,1fr))',gap:4,padding:8,width:240,maxWidth:'80vw',maxHeight:210,overflowY:'auto',background:'var(--card, #fff)',border:'1px solid var(--border, #ddd)',borderRadius:14,boxShadow:'0 8px 28px rgba(0,0,0,.18)'}}>{['😀','😃','😄','😁','😆','😅','😂','🤣','🥹','😊','😇','🙂','🙃','😉','😍','🥰','😘','😋','😎','🤩','🥳','😭','😢','😡','🤬','😤','😱','😮','😴','🤔','🤗','🫡','🙏','👏','👍','👎','❤️','🧡','💛','💚','💙','💜','🖤','💔','🔥','✨','🎉','💯','🤝','💪','🙌','👀'].map(emoji=><button key={emoji} type="button" onClick={()=>{setMessage(current=>current+emoji);setEmojiPickerOpen(false);}} style={{fontSize:22,padding:'5px 0',border:0,borderRadius:8,background:'transparent',cursor:'pointer'}} aria-label={'Insert '+emoji}>{emoji}</button>)}</div>}</div><textarea rows={1} value={message} onChange={e=>{setMessage(e.target.value);broadcastTyping(Boolean(e.target.value.trim()));}} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}} placeholder={selected.id === 'welcome' ? 'Select a chat to start…' : 'Write a message… (Shift+Enter for new line)'} aria-label="Write a message"/>{isRecordingVoice&&<small className="attachment-name" role="status">Recording voice note… tap stop when finished</small>}{messageFile&&<div className="message-attachment-preview">{messageFile.type.startsWith('image/')?<img src={URL.createObjectURL(messageFile)} alt="Attachment preview"/>:<span>{messageFile.type.startsWith('audio/')?'🎙 Voice note':messageFile.type.startsWith('video/')?'🎥 Video':'📎'} {messageFile.name}</span>}<button type="button" onClick={()=>{setMessageFile(null);document.querySelectorAll('.composer input[type=file]').forEach(input=>{input.value='';});}} aria-label="Remove attachment"><X size={15}/></button></div>}<button className="send" onClick={send} disabled={isRecordingVoice||sendingMessage||selected.id==='welcome'} aria-label={sendingMessage?'Sending message':'Send message'}><Send size={18}/></button></div></div></>}</section></main><nav className="mobile-bottom-nav" aria-label="Main navigation"><button className={active==='discover'?'active':''} onClick={()=>setActive('discover')}><House size={20}/><span>Home</span></button><button className={active==='games'?'active':''} onClick={()=>setActive('games')}><Gamepad2 size={20}/><span>Games</span></button><button className={active==='chats'?'active':''} onClick={()=>{setChatOpen(false);setActive('chats');}}><MessageCircle size={20}/><span>Chat</span></button><button className={active==='status'?'active':''} onClick={()=>{setActive('status');setShowMoreMenu(false);}}><Eye size={22}/><span>Status</span></button><button className={active==='directory'?'active':''} onClick={()=>{setActive('directory');setShowMoreMenu(false);}}><MoreHorizontal size={20}/><span>More</span></button><button className={active==='explore'?'active':''} onClick={()=>setActive('explore')}><Search size={20}/><span>Explore</span></button></nav>{profileView && createPortal((
   <div className="profile-modal" onClick={event=>{if(event.target===event.currentTarget)setProfileView(null);}}>
