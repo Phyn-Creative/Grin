@@ -2952,3 +2952,12 @@ button:active { transform: translateY(1px); }
 .replying-to{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 0 40px;color:#75847b;font-size:11px}
 .replying-to button{border:0;background:transparent;color:#138653;font-weight:700;cursor:pointer}
 @media(max-width:600px){.comments{padding-top:11px}.comment-list{max-height:440px}.comment-reply{margin-left:25px}.comment-reply:before{left:-12px}.comment-compose{gap:6px;padding:6px}.comment-bubble time{display:block;margin:3px 0 0}.comment-bubble p{font-size:13px}}
+
+
+/* Chat reliability and unread indicators */
+.nav-icon-with-badge{position:relative;display:inline-flex;align-items:center;justify-content:center}
+.nav-icon-with-badge>.nav-badge{position:absolute;top:-8px;right:-10px;min-width:17px;height:17px;padding:0 4px;font-size:10px;box-shadow:0 0 0 2px #fff}
+.desktop-nav-item>.nav-badge{margin-left:auto;flex-shrink:0}
+.message-send-notice{flex:0 0 100%;box-sizing:border-box;order:-1;padding:8px 11px;border-radius:10px;background:#fff0f0;border:1px solid #f1caca;color:#a52e2e;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.composer{flex-wrap:wrap}
+.composer textarea{min-width:0;flex:1 1 120px;resize:vertical;min-height:38px;max-height:180px;padding:9px 4px;line-height:1.4}
