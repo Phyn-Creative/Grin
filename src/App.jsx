@@ -2249,22 +2249,54 @@ export default function App() {
 
   async function sharePostToChat(chat){
     if(!sharePostTarget||!chat?.id||chat.id==='welcome'||sharePostSending) return;
+    setSharePostNotice('');
     if(!session?.user?.id){
       setSharePostNotice('Please sign in again before sending a post.');
       return;
     }
     setSharePostSending(true);
-    setSharePostNotice('');
     try {
+      // Refresh the auth session before checking membership so stale UI state cannot
+      // turn a valid share into a confusing RLS failure.
+      const {data:authData,error:authError}=await supabase.auth.getSession();
+      let activeSession=authData?.session;
+      if(authError||!activeSession?.user?.id||activeSession.user.id!==session.user.id){
+        const refreshed=await supabase.auth.refreshSession();
+        activeSession=refreshed.data?.session;
+        if(refreshed.error||!activeSession?.user?.id||activeSession.user.id!==session.user.id){
+          setSharePostNotice('Your GRIN session needs refreshing. Sign in again, then retry sharing.');
+          return;
+        }
+      }
+      setSession(activeSession);
+      // The insert policy requires the sender to be a member of the selected chat.
+      const {data:membership,error:membershipError}=await supabase
+        .from('grin_conversation_members')
+        .select('conversation_id')
+        .eq('conversation_id',chat.id)
+        .eq('user_id',activeSession.user.id)
+        .maybeSingle();
+      if(membershipError) throw membershipError;
+      if(!membership){
+        setSharePostNotice('You are no longer a member of that conversation. Refresh your chats and try another conversation.');
+        await loadChats();
+        return;
+      }
       const p=sharePostTarget;
       const isCommunityPost=Boolean(p.community_id);
       const payload=isCommunityPost
-        ? {conversation_id:chat.id,sender_id:session.user.id,body:p.body?.trim()||'Shared a GRIN community post',shared_community_post_id:p.id}
-        : {conversation_id:chat.id,sender_id:session.user.id,body:p.body?.trim()||'Shared a GRIN post',shared_post_id:p.id};
+        ? {conversation_id:chat.id,sender_id:activeSession.user.id,body:p.body?.trim()||'Shared a GRIN community post',shared_community_post_id:p.id}
+        : {conversation_id:chat.id,sender_id:activeSession.user.id,body:p.body?.trim()||'Shared a GRIN post',shared_post_id:p.id};
       const {data,error}=await supabase.from('grin_messages').insert(payload).select('*').single();
       if(error){
-        console.error('GRIN post share failed', {code:error.code,message:error.message,details:error.details,hint:error.hint,payload});
-        setSharePostNotice('Could not send this post. '+(error.message||'Please try again.'));
+        console.error('GRIN post share failed', {code:error.code,message:error.message,details:error.details,hint:error.hint});
+        setSharePostNotice(error.code==='42501'
+          ? 'GRIN blocked this share because the chat permissions could not be verified. Refresh your chats and try again.'
+          : 'Could not send this post. '+(error.message||'Please try again.'));
+        return;
+      }
+      if(!data) {
+        setSharePostNotice('GRIN did not confirm that the post was sent. Please refresh the chat before retrying.');
         return;
       }
       setSharePostTarget(null);
@@ -2272,15 +2304,16 @@ export default function App() {
       setSelected(chat);
       setChatOpen(true);
       setActive('chats');
-      if(data){
-        setMessages(current=>chat.id===selected.id
-          ? (current.some(m=>m.id===data.id)?current:[...current,data])
-          : current);
-      }
+      setMessages(current=>chat.id===selected?.id
+        ? (current.some(m=>m.id===data.id)?current:[...current,data])
+        : current);
       await loadMessages(chat.id);
+      setChats(current=>current.map(item=>item.id===chat.id
+        ? {...item,preview:payload.body,lastMessageAt:data.created_at||new Date().toISOString()}
+        : item));
     } catch(error) {
       console.error('Unexpected GRIN post share failure',error);
-      setSharePostNotice('Something went wrong while sending. Please try again.');
+      setSharePostNotice('Something went wrong while sharing. Your post has not been confirmed as sent; refresh the chat before retrying.');
     } finally {
       setSharePostSending(false);
     }
