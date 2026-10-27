@@ -196,6 +196,12 @@ function getCasualChessMoves(board,side){const moves=[];for(let from=0;from<64;f
 function getDraughtsMoves(board,side){const moves=[];for(let from=0;from<64;from++){const piece=board[from];if(!piece.p||((side==='black')!==(piece.p==='●')))continue;const r=Math.floor(from/8),c=from%8,dirs=piece.king?[-1,1]:[side==='black'?1:-1];for(const dr of dirs)for(const dc of [-1,1]){const nr=r+dr,nc=c+dc;if(nr<0||nr>7||nc<0||nc>7)continue;const to=nr*8+nc;if(!board[to].p)moves.push({from,to,capture:null});else if(board[to].p!==(piece.p)){const jr=nr+dr,jc=nc+dc;if(jr>=0&&jr<8&&jc>=0&&jc<8&&!board[jr*8+jc].p)moves.push({from,to:jr*8+jc,capture:to});}}}return moves;}
 function clearPath(board,from,to){const a=Math.floor(from/8),b=from%8,c=Math.floor(to/8),d=to%8,dr=Math.sign(c-a),dc=Math.sign(d-b);let r=a+dr,col=b+dc;while(r!==c||col!==d){if(board[r*8+col]?.p)return false;r+=dr;col+=dc;}return true;}
 
+const LUDO_TRACK_COORDS = [
+ [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[1,7],[1,8],[2,8],
+ [3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[7,13],[8,13],[8,12],[8,11],[8,10],
+ [8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[13,7],[13,6],[12,6],[11,6],[10,6],[9,6],
+ [8,5],[8,4],[8,3],[8,2],[8,1],[7,1],[6,1],[5,1],[4,1],[3,1],[2,1],[1,1],[1,2],[1,3]
+];
 const LUDO_SAFE = new Set([0,8,13,21,26,34,39,47]);
 function ludoTrackCell(side,progress){return ((side==='you'?0:26)+progress-1)%52;}
 function getLudoLegal(pieces,side,dice){return pieces[side].map((p,i)=>({p,i})).filter(({p})=>p===-1?dice===6:p<57&&p+dice<=57).map(({i})=>i);}
