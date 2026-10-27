@@ -1073,7 +1073,7 @@ export default function App() {
     loadPosts();
     loadNotifications();
     loadBookmarks();
-  }, [session]);
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session) return;
@@ -1095,7 +1095,7 @@ export default function App() {
     }
     if (active === 'jobs') loadJobs();
     if (active === 'settings') loadBlockedUsers();
-  }, [session, active]);
+  }, [session?.user?.id, active]);
 
   useEffect(() => {
     if (!session?.user?.id || active !== 'explore') return;
@@ -1643,7 +1643,7 @@ export default function App() {
       if (toastTimer) window.clearTimeout(toastTimer);
       supabase.removeChannel(channel);
     };
-  }, [session, toastEnabled, mutedChatIds]);
+  }, [session?.user?.id, toastEnabled, mutedChatIds]);
 
   async function markNotificationsRead() { await supabase.from('grin_notifications').update({read_at:new Date().toISOString()}).eq('user_id',session.user.id).is('read_at',null); setNotifications(x=>x.map(n=>({...n,read_at:n.read_at||new Date().toISOString()}))); }
 
@@ -1745,7 +1745,7 @@ export default function App() {
         if (data) setPosts(current => current.some(p=>p.id===data.id) ? current : [data,...current]);
       }).subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session?.user?.id]);
 
   async function savePostEdit(post) {
     const body=editingPostBody.trim();
@@ -1996,7 +1996,7 @@ export default function App() {
       if (receiptTimer !== null) window.clearInterval(receiptTimer);
       supabase.removeChannel(channel);
     };
-  }, [session, selected.id]);
+  }, [session?.user?.id, selected.id]);
 
   async function searchPeople(value) {
     setPersonSearch(value);
@@ -2196,7 +2196,7 @@ export default function App() {
     }
     openSharedProfile();
     return () => { cancelled = true; };
-  }, [session, sharedProfileUsername]);
+  }, [session?.user?.id, sharedProfileUsername]);
 
   async function sharePostExternally(post){
     const url = new URL(window.location.href);
@@ -2237,7 +2237,7 @@ export default function App() {
     }
     openSharedPost();
     return () => { cancelled = true; };
-  }, [session, sharedPostId, posts.length]);
+  }, [session?.user?.id, sharedPostId, posts.length]);
 
   async function sharePostToChat(chat){
     if(!sharePostTarget||!chat?.id||chat.id==='welcome'||sharePostSending) return;
