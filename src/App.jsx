@@ -1776,7 +1776,7 @@ export default function App() {
     const body=postBody.trim();
     if((!body&&!postFile)||postLoading)return;
     if(!session?.user?.id){setPostNotice('Please sign in again before posting.');return;}
-    if(body.length>10000){setPostNotice('Your post is too long. Keep it under 10,000 characters.');return;}
+    if(body.length>5000){setPostNotice('Your post is too long. Keep it under 5,000 characters.');return;}
     setPostLoading(true);setPostNotice('');
     let mediaUrl=null,mediaType=null;
     try{
@@ -1793,7 +1793,7 @@ export default function App() {
         if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('GRIN could not restore your media-upload session. Sign out, sign back in, and try again.');
         setSession(uploadSession);
         mediaType=postFile.type.startsWith('video/')?'video':'image';
-        const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+        const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_').replace(/\.{2,}/g,'.').replace(/^\.+/,'').replace(/\.+$/,'').slice(0,120)||'upload';
         const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
         const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,postFile,{contentType:postFile.type,cacheControl:'3600',upsert:false});
         if(uploadError)throw new Error('Media upload failed: '+uploadError.message);
@@ -1942,7 +1942,7 @@ export default function App() {
         setProfileSaving(false);
         return;
       }
-      const safe = avatarFile.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+      const safe = avatarFile.name.replace(/[^a-zA-Z0-9._-]/g, '-').replace(/\.{2,}/g, '.').replace(/^\.+/, '').replace(/\.+$/, '').slice(0, 120) || 'profile-photo';
       const path = session.user.id + '/profile/' + crypto.randomUUID() + '-' + safe;
       const { error: uploadError } = await supabase.storage.from('grin-media').upload(path, avatarFile, { contentType: avatarFile.type, upsert: false });
       if (uploadError) {
