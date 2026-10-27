@@ -20,8 +20,8 @@ const initChess = () => ['♜','♞','♝','♛','♚','♝','♞','♜',...'♟
 const initDraughts = () => Array.from({length:64},(_,i)=>{const r=Math.floor(i/8),c=i%8;return {p:(r+c)%2&&r<3?'●':(r+c)%2&&r>4?'○':'',king:false};});
 const panel = {border:'1px solid var(--border,#dedee5)',borderRadius:18,padding:16,background:'var(--card,#fff)',marginTop:14};
 const btn = {border:'1px solid var(--border,#ddd)',borderRadius:12,padding:'10px 12px',background:'var(--card,#fff)',color:'var(--text,#222)',cursor:'pointer',fontWeight:650};
-export default function ExpansionGames({ userId = null }) {
- const [mode,setMode]=useState('word');
+export default function ExpansionGames({ userId = null, initialMode = 'word' }) {
+ const [mode,setMode]=useState(initialMode);
  const [word,setWord]=useState(()=>WORDS[Math.floor(Math.random()*WORDS.length)]);
  const [guess,setGuess]=useState(''); const [guesses,setGuesses]=useState([]); const [mines,setMines]=useState(makeMines); const [mineOver,setMineOver]=useState(false); const [mineWon,setMineWon]=useState(false);
  const [chess,setChess]=useState(initChess); const [chessPick,setChessPick]=useState(null); const [chessTurn,setChessTurn]=useState('white'); const [chessMsg,setChessMsg]=useState('White to move · tap a piece, then a destination.'); const [chessThinking,setChessThinking]=useState(false);
