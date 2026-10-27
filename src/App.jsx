@@ -1250,9 +1250,15 @@ export default function App() {
       if(storyFile){
         if(storyFile.size>50*1024*1024)throw new Error('Status media must be 50 MB or less.');
         if(!storyFile.type.startsWith('image/')&&!storyFile.type.startsWith('video/'))throw new Error('Choose an image or video for your Status.');
-        const {data:authData,error:authError}=await supabase.auth.getSession();
-        const uploadSession=authData?.session;
-        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('Your sign-in session is not ready for media upload. Please sign out and back in, then try again.');
+        let {data:authData,error:authError}=await supabase.auth.getSession();
+        let uploadSession=authData?.session;
+        // The UI auth state can outlive a missing/expired persisted token. Try refreshing once before blocking the upload.
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id){
+          const refreshed=await supabase.auth.refreshSession();
+          authData=refreshed.data;authError=refreshed.error;uploadSession=authData?.session;
+        }
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('GRIN could not restore your media-upload session. Sign out, sign back in, and try again.');
+        setSession(uploadSession);
         media_type=storyFile.type.startsWith('video/')?'video':'image';
         const safe=storyFile.name.replace(/[^a-zA-Z0-9._-]/g,'-');
         const path=session.user.id+'/stories/'+crypto.randomUUID()+'-'+safe;
@@ -1776,9 +1782,15 @@ export default function App() {
       if(postFile){
         if(postFile.size>50*1024*1024)throw new Error('Media must be 50 MB or smaller.');
         if(!postFile.type.startsWith('image/')&&!postFile.type.startsWith('video/'))throw new Error('Choose an image or video file.');
-        const {data:authData,error:authError}=await supabase.auth.getSession();
-        const uploadSession=authData?.session;
-        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('Your sign-in session is not ready for media upload. Please sign out and back in, then try again.');
+        let {data:authData,error:authError}=await supabase.auth.getSession();
+        let uploadSession=authData?.session;
+        // The UI auth state can outlive a missing/expired persisted token. Try refreshing once before blocking the upload.
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id){
+          const refreshed=await supabase.auth.refreshSession();
+          authData=refreshed.data;authError=refreshed.error;uploadSession=authData?.session;
+        }
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('GRIN could not restore your media-upload session. Sign out, sign back in, and try again.');
+        setSession(uploadSession);
         mediaType=postFile.type.startsWith('video/')?'video':'image';
         const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
         const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
