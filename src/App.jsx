@@ -1724,11 +1724,12 @@ export default function App() {
         setReactionCounts(rc);setReactionMine(rm);setCommentCounts(cc);setPolls(pm);
         const pollIds=(pollRows||[]).map(x=>x.id);
         if(pollIds.length){
-          const [{data:votes},{data:allVotes}]=await Promise.all([
+          const [{data:votes,error:votesError},{data:allVotes,error:voteCountError}]=await Promise.all([
             supabase.from('grin_poll_votes').select('poll_id,option_id').eq('user_id',session.user.id).in('poll_id',pollIds),
-            supabase.from('grin_poll_votes').select('poll_id,option_id').in('poll_id',pollIds)
+            supabase.rpc('grin_get_poll_vote_counts',{p_poll_ids:pollIds})
           ]);
-          const vm={},counts={};(votes||[]).forEach(v=>vm[v.poll_id]=v.option_id);(allVotes||[]).forEach(v=>{if(!counts[v.poll_id])counts[v.poll_id]={};counts[v.poll_id][v.option_id]=(counts[v.poll_id][v.option_id]||0)+1;});setPollVotes(vm);setPollVoteCounts(counts);
+          if(votesError||voteCountError) console.warn('GRIN poll totals partially failed',{votesError,voteCountError});
+          const vm={},counts={};(votes||[]).forEach(v=>vm[v.poll_id]=v.option_id);(allVotes||[]).forEach(v=>{if(!counts[v.poll_id])counts[v.poll_id]={};counts[v.poll_id][v.option_id]=Number(v.vote_count)||0;});setPollVotes(vm);setPollVoteCounts(counts);
         }else{setPollVotes({});setPollVoteCounts({});}
       }else{setReactionCounts({});setReactionMine({});setCommentCounts({});setPolls({});setPollVotes({});setPollVoteCounts({});}
     } catch(error) {
