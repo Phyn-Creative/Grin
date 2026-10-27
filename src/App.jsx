@@ -2488,7 +2488,6 @@ export default function App() {
         <button type="button" data-icon="🏆" data-desc="Test your football IQ" className={selectedGrinGame === 'trivia' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('trivia')}>Football Trivia</button>
       </div></div>
       <div className="grin-game-category"><div className="grin-game-category-heading"><span className="grin-category-icon">🧩</span><span className="grin-category-copy"><strong>More games & challenges</strong><small>Strategy, word games, party modes and more</small></span><span className="grin-category-count">EXPLORE</span></div><div className="grin-game-picker" role="group" aria-label="More games">
-        aria-label="More games">
         <button type="button" data-icon="🔤" data-desc="Crack the hidden word" className={selectedGrinGame === 'wordguess' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('wordguess')}>Word Guess</button>
         <button type="button" data-icon="💣" data-desc="Clear the board safely" className={selectedGrinGame === 'mines' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('mines')}>Minesweeper</button>
         <button type="button" data-icon="♟️" data-desc="Classic board strategy" className={selectedGrinGame === 'chess' ? 'primary' : 'secondary-btn'} onClick={()=>setSelectedGrinGame('chess')}>Chess</button>
