@@ -1243,19 +1243,33 @@ export default function App() {
     e.preventDefault();
     const caption=storyCaption.trim();
     if(!caption&&!storyFile)return;
+    if(!session?.user?.id){setStoryNotice('Please sign in again before posting a Status.');return;}
+    setStoryNotice('');
     let media_url=null, media_type=null;
-    if(storyFile){
-      if(storyFile.size>50*1024*1024){setStoryNotice('Story file must be 50 MB or less.');return;}
-      media_type=storyFile.type.startsWith('video/')?'video':'image';
-      const safe=storyFile.name.replace(/[^a-zA-Z0-9._-]/g,'-');
-      const path=session.user.id+'/stories/'+crypto.randomUUID()+'-'+safe;
-      const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,storyFile,{contentType:storyFile.type,upsert:false});
-      if(uploadError){setStoryNotice(uploadError.message);return;}
-      media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
+    try{
+      if(storyFile){
+        if(storyFile.size>50*1024*1024)throw new Error('Status media must be 50 MB or less.');
+        if(!storyFile.type.startsWith('image/')&&!storyFile.type.startsWith('video/'))throw new Error('Choose an image or video for your Status.');
+        const {data:authData,error:authError}=await supabase.auth.getSession();
+        const uploadSession=authData?.session;
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('Your sign-in session is not ready for media upload. Please sign out and back in, then try again.');
+        media_type=storyFile.type.startsWith('video/')?'video':'image';
+        const safe=storyFile.name.replace(/[^a-zA-Z0-9._-]/g,'-');
+        const path=session.user.id+'/stories/'+crypto.randomUUID()+'-'+safe;
+        const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,storyFile,{contentType:storyFile.type,upsert:false});
+        if(uploadError)throw new Error('Status media upload failed: '+uploadError.message);
+        media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
+      }
+      const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url,media_type,expires_at:new Date(Date.now()+48*60*60*1000).toISOString()});
+      if(error)throw error;
+      setStoryNotice('Status posted for 48 hours.');
+      setStoryCaption('');setStoryFile(null);
+      const x=document.getElementById('grin-story-input');if(x)x.value='';
+      await loadStories();
+    }catch(error){
+      console.error('GRIN Status publishing failed:',error);
+      setStoryNotice(error?.message||'Status could not be published. Please try again.');
     }
-    const {error}=await supabase.from('grin_stories').insert({author_id:session.user.id,caption,media_url,media_type,expires_at:new Date(Date.now()+48*60*60*1000).toISOString()});
-    setStoryNotice(error?.message||'Story posted for 48 hours.');
-    if(!error){setStoryCaption('');setStoryFile(null);const x=document.getElementById('grin-story-input');if(x)x.value='';loadStories();}
   }
   async function openBusinessProfile(b){const [{data:f},{count}]=await Promise.all([supabase.from('grin_business_follows').select('business_id').eq('user_id',session.user.id).eq('business_id',b.id).maybeSingle(),supabase.from('grin_business_follows').select('*',{count:'exact',head:true}).eq('business_id',b.id)]);const [{data:sv},{data:pr}]=await Promise.all([supabase.from('grin_business_services').select('id,name,description,price,currency').eq('business_id',b.id).eq('active',true).limit(12),supabase.from('grin_business_products').select('id,name,description,price,currency,image_url,product_url').eq('business_id',b.id).eq('active',true).limit(12)]);setBusinessView({...b,services:sv||[],products:pr||[]});setBusinessFollowed(!!f);setBusinessFollowerCount(count||0);}
   async function toggleBusinessFollow(){if(!businessView||businessView.owner_id===session.user.id)return;if(businessFollowed){await supabase.from('grin_business_follows').delete().eq('business_id',businessView.id).eq('user_id',session.user.id);setBusinessFollowed(false);setBusinessFollowerCount(x=>Math.max(0,x-1));}else{await supabase.from('grin_business_follows').insert({business_id:businessView.id,user_id:session.user.id});setBusinessFollowed(true);setBusinessFollowerCount(x=>x+1);}}
@@ -1762,6 +1776,9 @@ export default function App() {
       if(postFile){
         if(postFile.size>50*1024*1024)throw new Error('Media must be 50 MB or smaller.');
         if(!postFile.type.startsWith('image/')&&!postFile.type.startsWith('video/'))throw new Error('Choose an image or video file.');
+        const {data:authData,error:authError}=await supabase.auth.getSession();
+        const uploadSession=authData?.session;
+        if(authError||!uploadSession?.access_token||uploadSession.user?.id!==session.user.id)throw new Error('Your sign-in session is not ready for media upload. Please sign out and back in, then try again.');
         mediaType=postFile.type.startsWith('video/')?'video':'image';
         const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_');
         const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
