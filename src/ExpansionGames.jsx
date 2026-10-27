@@ -64,8 +64,8 @@ export default function ExpansionGames({ userId = null, initialMode = 'word' }) 
    const afterBot=next.map(x=>({...x}));
    const botPiece=afterBot[chosen.from];const humanCaptured=afterBot[chosen.to].p;
    afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
-   setDraughts(afterBot);setDraughtTurn('white');setDraughtThinking(false);
-   setNotice(humanCaptured==='○'?'GRIN Bot captured one of your pieces. Your turn.':'GRIN Bot moved. Your turn.');
+   setChess(afterBot);setChessTurn('white');setChessThinking(false);
+   setChessMsg(humanCaptured?'GRIN Bot captured one of your pieces. Your turn.':'GRIN Bot moved. Your turn.');
   },700);
  };
  const draughtTap=(i)=>{
