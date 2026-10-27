@@ -58,13 +58,14 @@ export default function ExpansionGames({ userId = null, initialMode = 'word' }) 
   window.setTimeout(()=>{
    const botMoves=getCasualChessMoves(next,'black');
    if(!botMoves.length){setChess(next);setChessTurn('white');setChessThinking(false);setChessMsg('GRIN Bot has no available moves. You win this casual round!');return;}
-   const captures=botMoves.filter(m=>next[m.to].p);
-   const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+   const pieceValue=p=>({'♙':1,'♟':1,'♘':3,'♞':3,'♗':3,'♝':3,'♖':5,'♜':5,'♕':9,'♛':9,'♔':100,'♚':100}[p]||0);
+   const scored=botMoves.map(m=>{const target=next[m.to];const mover=next[m.from];const center=3.5-Math.abs(3.5-(m.to%8))+3.5-Math.abs(3.5-Math.floor(m.to/8));return {m,score:(target.p?pieceValue(target.p)*10-pieceValue(mover):0)+center+Math.random()*1.5};}).sort((a,b)=>b.score-a.score);
+   const chosen=scored[0].m;
    const afterBot=next.map(x=>({...x}));
    const botPiece=afterBot[chosen.from];const humanCaptured=afterBot[chosen.to].p;
    afterBot[chosen.to]={...botPiece};afterBot[chosen.from]={p:'',side:null};
-   setChess(afterBot);setChessTurn('white');setChessThinking(false);
-   setChessMsg(humanCaptured==='♔'?'GRIN Bot captured your king. Reset to play again.':'GRIN Bot moved. Your turn.');
+   setDraughts(afterBot);setDraughtTurn('white');setDraughtThinking(false);
+   setNotice(humanCaptured==='○'?'GRIN Bot captured one of your pieces. Your turn.':'GRIN Bot moved. Your turn.');
   },700);
  };
  const draughtTap=(i)=>{
@@ -87,8 +88,8 @@ export default function ExpansionGames({ userId = null, initialMode = 'word' }) 
   window.setTimeout(()=>{
    const botMoves=getDraughtsMoves(next,'black');
    if(!botMoves.length){setDraughts(next);setDraughtTurn('white');setDraughtThinking(false);setNotice('You win! GRIN Bot has no legal moves.');return;}
-   const captures=botMoves.filter(m=>m.capture);
-   const chosen=(captures.length?captures:botMoves)[Math.floor(Math.random()*(captures.length?captures.length:botMoves.length))];
+   const scored=botMoves.map(m=>{const piece=next[m.from];const row=Math.floor(m.to/8);return {m,score:(m.capture!==null?100:0)+(piece.king?3:0)+(row===7&&!piece.king?12:0)+Math.random()*2};}).sort((a,b)=>b.score-a.score);
+   const chosen=scored[0].m;
    const afterBot=next.map(x=>({...x}));
    afterBot[chosen.to]={...afterBot[chosen.from]};afterBot[chosen.from]={p:'',king:false};
    if(chosen.capture!==null)afterBot[chosen.capture]={p:'',king:false};
