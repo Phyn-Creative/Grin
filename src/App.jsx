@@ -1785,6 +1785,24 @@ export default function App() {
     setPostLoading(true);setPostNotice('');
     let mediaUrl=null,mediaType=null;
     try{
+      // Use the current persisted auth session for text posts as well as uploads.
+      // A stale React session can otherwise make an ordinary publish fail silently.
+      const {data:authData,error:authError}=await supabase.auth.getSession();
+      let activeSession=authData?.session;
+      if(authError||!activeSession?.user?.id||activeSession.user.id!==session.user.id){
+        const refreshed=await supabase.auth.refreshSession();
+        activeSession=refreshed.data?.session;
+        if(refreshed.error||!activeSession?.user?.id||activeSession.user.id!==session.user.id){
+          throw new Error('Your GRIN session could not be restored. Sign in again, then retry posting.');
+        }
+      } else if(activeSession.expires_at && activeSession.expires_at*1000<Date.now()+5*60*1000){
+        const refreshed=await supabase.auth.refreshSession();
+        activeSession=refreshed.data?.session;
+        if(refreshed.error||!activeSession?.user?.id||activeSession.user.id!==session.user.id){
+          throw new Error('Your GRIN session could not be refreshed. Sign in again, then retry posting.');
+        }
+      }
+      setSession(activeSession);
       if(postFile){
         if(postFile.size>50*1024*1024)throw new Error('Media must be 50 MB or smaller.');
         if(!postFile.type.startsWith('image/')&&!postFile.type.startsWith('video/'))throw new Error('Choose an image or video file.');
@@ -1799,7 +1817,7 @@ export default function App() {
         setSession(uploadSession);
         mediaType=postFile.type.startsWith('video/')?'video':'image';
         const safe=postFile.name.replace(/[^a-zA-Z0-9._-]/g,'_').replace(/\.{2,}/g,'.').replace(/^\.+/,'').replace(/\.+$/,'').slice(0,120)||'upload';
-        const path=session.user.id+'/'+crypto.randomUUID()+'-'+safe;
+        const path=activeSession.user.id+'/'+crypto.randomUUID()+'-'+safe;
         const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,postFile,{contentType:postFile.type,cacheControl:'3600',upsert:false});
         if(uploadError)throw new Error('Media upload failed: '+uploadError.message);
         mediaUrl=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
@@ -1809,7 +1827,7 @@ export default function App() {
       if(!data?.id)throw new Error('The server did not confirm the post was created. Refresh the feed before retrying to avoid duplicates.');
       const {data:full,error:fetchError}=await supabase.from('grin_posts').select('id,author_id,body,media_url,media_type,repost_of_id,created_at,grin_profiles(username,display_name,avatar_url)').eq('id',data.id).maybeSingle();
       if(fetchError)console.warn('Post saved, but full post details could not be fetched',fetchError);
-      const optimistic=full||{id:data.id,author_id:session.user.id,body,media_url:mediaUrl,media_type:mediaType,created_at:new Date().toISOString(),grin_profiles:profile};
+      const optimistic=full||{id:data.id,author_id:activeSession.user.id,body,media_url:mediaUrl,media_type:mediaType,created_at:new Date().toISOString(),grin_profiles:profile};
       setPosts(current=>current.some(p=>p.id===optimistic.id)?current:[optimistic,...current]);
       if(showPollComposer){
         const q=pollQuestion.trim(),opts=pollOptions.map(x=>x.trim()).filter(Boolean);
