@@ -1713,17 +1713,13 @@ export default function App() {
       setSuggestedBusinesses((businessRows||[]).slice(0,5));
       if(data?.length){
         const ids=data.map(p=>p.id);
-        const [{data:rx,error:rxError},{data:mine,error:mineError},{data:cm,error:cmError},{data:pollRows,error:pollError}]=await Promise.all([
-          supabase.from('grin_post_reactions').select('post_id').in('post_id',ids),
-          supabase.from('grin_post_reactions').select('post_id,reaction').eq('user_id',session.user.id).in('post_id',ids),
-          supabase.from('grin_post_comments').select('post_id').in('post_id',ids),
+        const [{data:stats,error:statsError},{data:pollRows,error:pollError}]=await Promise.all([
+          supabase.rpc('grin_get_feed_post_stats',{p_post_ids:ids}),
           supabase.from('grin_polls').select('id,post_id,question,expires_at,grin_poll_options(id,option_text,position)').in('post_id',ids)
         ]);
-        if(rxError||mineError||cmError||pollError) console.warn('GRIN feed extras partially failed',{rxError,mineError,cmError,pollError});
+        if(statsError||pollError) console.warn('GRIN feed extras partially failed',{statsError,pollError});
         const rc={},rm={},cc={},pm={};
-        (rx||[]).forEach(x=>rc[x.post_id]=(rc[x.post_id]||0)+1);
-        (mine||[]).forEach(x=>rm[x.post_id]=x.reaction);
-        (cm||[]).forEach(x=>cc[x.post_id]=(cc[x.post_id]||0)+1);
+        (stats||[]).forEach(x=>{rc[x.post_id]=Number(x.reaction_count)||0;cc[x.post_id]=Number(x.comment_count)||0;if(x.my_reaction)rm[x.post_id]=x.my_reaction;});
         (pollRows||[]).forEach(x=>pm[x.post_id]=x);
         setReactionCounts(rc);setReactionMine(rm);setCommentCounts(cc);setPolls(pm);
         const pollIds=(pollRows||[]).map(x=>x.id);
