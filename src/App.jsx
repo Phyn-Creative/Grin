@@ -2353,17 +2353,53 @@ export default function App() {
     setSendingMessage(true);
     setMessageSendNotice('');
     try {
+      // Re-read the persisted session before sending. Refresh near-expiry tokens so
+      // the REST request and the sender_id use the same current authenticated user.
+      const { data: sessionResult, error: sessionReadError } = await supabase.auth.getSession();
+      if (sessionReadError) throw sessionReadError;
+      let activeSession = sessionResult.session;
+      if (!activeSession?.user?.id) {
+        setMessageSendNotice('Your GRIN session has expired. Please sign in again; your draft is still here.');
+        return;
+      }
+      if (activeSession.expires_at && activeSession.expires_at * 1000 < Date.now() + 5 * 60 * 1000) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshed.session?.user?.id) {
+          console.error('GRIN session refresh failed before message send', refreshError);
+          setMessageSendNotice('GRIN could not renew your session. Please sign in again; your draft is still here.');
+          return;
+        }
+        activeSession = refreshed.session;
+      }
+      setSession(activeSession);
+      if (activeSession.user.id !== session.user.id) {
+        setMessageSendNotice('Your signed-in account changed. Please reopen this conversation before sending; your draft is still here.');
+        return;
+      }
+      // Fail clearly if this account is not a member of the selected conversation.
+      const { data: membership, error: membershipError } = await supabase
+        .from('grin_conversation_members')
+        .select('conversation_id')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', activeSession.user.id)
+        .maybeSingle();
+      if (membershipError) throw membershipError;
+      if (!membership) {
+        setMessageSendNotice('This account is no longer a member of this conversation. Refresh your chat list and reopen it; your draft is still here.');
+        await loadChats();
+        return;
+      }
       let media_url=null, media_type=null;
       if(attachment){
         if(attachment.size>50*1024*1024){setMessageSendNotice('Media must be 50 MB or less. Your message is still here.');return;}
         const safe=attachment.name.replace(/[^a-zA-Z0-9._-]/g,'-');
-        const path=session.user.id+'/messages/'+crypto.randomUUID()+'-'+safe;
+        const path=activeSession.user.id+'/messages/'+crypto.randomUUID()+'-'+safe;
         const {error:uploadError}=await supabase.storage.from('grin-media').upload(path,attachment,{contentType:attachment.type,upsert:false});
         if(uploadError){console.error('GRIN message attachment upload failed',uploadError);setMessageSendNotice('Attachment upload failed: '+uploadError.message+' Your draft is still here.');return;}
         media_url=supabase.storage.from('grin-media').getPublicUrl(path).data.publicUrl;
         media_type=attachment.type.startsWith('audio/')?'audio':(attachment.type.startsWith('video/')?'video':'image');
       }
-      const { data, error } = await supabase.from('grin_messages').insert({ conversation_id:conversationId,sender_id:session.user.id,body:body||(media_type==='audio'?'Voice note':media_type==='video'?'Video':'Photo'),media_url,media_type,reply_to_id:replyId}).select().single();
+      const { data, error } = await supabase.from('grin_messages').insert({ conversation_id:conversationId,sender_id:activeSession.user.id,body:body||(media_type==='audio'?'Voice note':media_type==='video'?'Video':'Photo'),media_url,media_type,reply_to_id:replyId}).select().single();
       if(error||!data){
         console.error('GRIN message send failed',error);
         setMessageSendNotice('Message could not be sent: '+(error?.message||'No message was returned by the server')+'. Your draft is still here.');
