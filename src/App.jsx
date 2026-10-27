@@ -1829,22 +1829,23 @@ export default function App() {
       if(fetchError)console.warn('Post saved, but full post details could not be fetched',fetchError);
       const optimistic=full||{id:data.id,author_id:activeSession.user.id,body,media_url:mediaUrl,media_type:mediaType,created_at:new Date().toISOString(),grin_profiles:profile};
       setPosts(current=>current.some(p=>p.id===optimistic.id)?current:[optimistic,...current]);
+      let postOutcomeNotice='Posted successfully.';
       if(showPollComposer){
         const q=pollQuestion.trim(),opts=pollOptions.map(x=>x.trim()).filter(Boolean);
-        if(!q||opts.length<2){setPostNotice('Your post is live, but the poll was not added. Add a question and at least two options.');}
+        if(!q||opts.length<2){postOutcomeNotice='Your post is live, but the poll was not added. Add a question and at least two options.';}
         else{
           const {data:poll,error:pollError}=await supabase.from('grin_polls').insert({post_id:data.id,question:q,expires_at:new Date(Date.now()+7*24*60*60*1000).toISOString()}).select().single();
-          if(pollError)setPostNotice('Post published, but the poll could not be created: '+pollError.message);
+          if(pollError)postOutcomeNotice='Post published, but the poll could not be created: '+pollError.message;
           else{
             const {data:createdOptions,error:optError}=await supabase.from('grin_poll_options').insert(opts.map((option_text,i)=>({poll_id:poll.id,option_text,position:i}))).select();
-            if(optError)setPostNotice('Post published, but poll options could not be saved: '+optError.message);
+            if(optError)postOutcomeNotice='Post published, but poll options could not be saved: '+optError.message;
             else{setPolls(x=>({...x,[data.id]:{...poll,grin_poll_options:createdOptions||[]}}));setPollQuestion('');setPollOptions(['','']);}
           }
         }
       }
       setPostBody('');setPostFile(null);setShowPollComposer(false);
       const input=document.getElementById('grin-media-input');if(input)input.value='';
-      if(!postNotice)setPostNotice('Posted successfully.');
+      setPostNotice(postOutcomeNotice);
     }catch(error){
       console.error('GRIN post creation failed',error);
       const message=error?.message||'Unknown error';
