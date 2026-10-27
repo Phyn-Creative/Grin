@@ -2975,3 +2975,12 @@ button:active { transform: translateY(1px); }
 .message-send-notice{flex:0 0 100%;box-sizing:border-box;order:-1;padding:8px 11px;border-radius:10px;background:#fff0f0;border:1px solid #f1caca;color:#a52e2e;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
 .composer{flex-wrap:wrap}
 .composer textarea{min-width:0;flex:1 1 120px;resize:vertical;min-height:38px;max-height:180px;padding:9px 4px;line-height:1.4}
+
+
+/* Game catalogue categories stay visible; no dropdown interaction required */
+.grin-game-library .grin-game-category-heading{display:flex;align-items:center;gap:12px;min-height:76px;padding:15px 16px;border-bottom:1px solid var(--border-color,rgba(127,127,127,.14));}
+.grin-game-library .grin-game-category-heading .grin-category-copy{flex:1;min-width:0;}
+.grin-game-library .grin-game-category-heading .grin-category-count{flex-shrink:0;}
+.grin-game-library .grin-game-picker{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:12px;}
+.grin-game-library .grin-game-category{border:1px solid var(--border-color,rgba(127,127,127,.16));}
+@media(max-width:600px){.grin-game-library .grin-game-category-heading{min-height:68px;padding:12px;gap:10px}.grin-game-library .grin-game-picker{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:10px}}
