@@ -3041,3 +3041,58 @@ button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+
+/* GRIN finish pass: consistent controls, readable surfaces, touch ergonomics, and overflow safety */
+:root{
+  color-scheme: light;
+  --grin-radius-sm:10px;
+  --grin-radius-md:14px;
+  --grin-radius-lg:18px;
+  --grin-shadow-soft:0 8px 28px rgba(23,55,38,.055);
+  --grin-shadow-pop:0 16px 44px rgba(23,55,38,.12);
+}
+html{min-width:320px;scrollbar-gutter:stable}
+body{min-width:320px;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+#root{min-height:100vh}
+img,video,canvas,svg{max-width:100%}
+button,a,input,textarea,select{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+button:disabled,[aria-disabled="true"]{cursor:not-allowed;opacity:.62}
+input,textarea,select{max-width:100%;min-width:0}
+textarea{line-height:1.55}
+::selection{background:#ccebd8;color:#174d37}
+a{ text-underline-offset:3px }
+button:not(:disabled){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease,transform .16s ease}
+button:not(:disabled):active{transform:translateY(1px)}
+input,textarea,select{transition:border-color .16s ease,box-shadow .16s ease}
+input:focus,textarea:focus,select:focus{border-color:#80b99a}
+.content,.layout,.main-content,.page-content{min-width:0;max-width:100%}
+.post-card,.post-composer,.profile-card,.explore-card,.business-card,.notification-row,.suggestions-card,.settings-card{overflow-wrap:anywhere}
+.post-card img,.post-card video,.post-media img,.post-media video{display:block;max-width:100%;object-fit:contain}
+.post-card img,.post-card video{border-radius:12px}
+[role="dialog"],.modal,.modal-content,.profile-modal,.share-modal,.game-modal{max-width:calc(100vw - 24px)}
+/* Clear interaction states without adding visual noise. */
+button:focus-visible,a:focus-visible,[role="button"]:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid rgba(25,134,91,.32);outline-offset:3px
+}
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+[aria-live="polite"],[role="status"]{overflow-wrap:anywhere}
+/* Keep mobile layouts from being pushed wider by long usernames, links, or game cards. */
+@media(max-width:800px){
+  .content,.layout,.main-content,.page-content{width:100%;max-width:100%;min-width:0}
+  .post-card,.post-composer,.profile-card,.explore-card,.business-card,.notification-row,.suggestions-card,.settings-card{min-width:0}
+  .post-body,.message-bubble,.chat-preview,.profile-bio,.notification-row{overflow-wrap:anywhere;word-break:normal}
+  button,.primary,.secondary-btn{min-height:40px}
+  input,select{min-height:42px}
+}
+@media(max-width:480px){
+  .post-card,.post-composer,.profile-card,.explore-card,.business-card,.notification-row,.suggestions-card,.settings-card{border-radius:14px}
+  .feed-empty-state{padding:24px 18px}
+}
+@media(hover:none){
+  .post-card:hover{box-shadow:0 5px 22px rgba(22,58,39,.035)}
+}
+@media(prefers-reduced-motion:reduce){
+  html:focus-within{scroll-behavior:auto}
+}
